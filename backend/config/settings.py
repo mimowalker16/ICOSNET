@@ -148,17 +148,37 @@ CELERY_TIMEZONE = TIME_ZONE
 # --------------------------------------------------------------------------- #
 # Email
 # --------------------------------------------------------------------------- #
-# Use console backend locally; switched to SMTP when credentials are available
-EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
-EMAIL_HOST = env('EMAIL_HOST', default='')
+_email_host_user = env('EMAIL_HOST_USER', default='')
+EMAIL_HOST = env('EMAIL_HOST', default='smtp.gmail.com')
 EMAIL_PORT = env.int('EMAIL_PORT', default=587)
-EMAIL_HOST_USER = env('EMAIL_HOST_USER', default='')
+EMAIL_HOST_USER = _email_host_user
 EMAIL_HOST_PASSWORD = env('EMAIL_HOST_PASSWORD', default='')
 EMAIL_USE_TLS = env('EMAIL_USE_TLS')
 DEFAULT_FROM_EMAIL = env('DEFAULT_FROM_EMAIL', default='supervision@icosnet.dz')
+ALERT_EMAIL = env('ALERT_EMAIL', default=_email_host_user)
+# Auto-switch: use real SMTP when credentials are configured, console otherwise
+EMAIL_BACKEND = (
+    'django.core.mail.backends.smtp.EmailBackend'
+    if _email_host_user
+    else 'django.core.mail.backends.console.EmailBackend'
+)
 
 # --------------------------------------------------------------------------- #
 # Webhooks (filled in when provided by ICOSNET)
 # --------------------------------------------------------------------------- #
 SLACK_WEBHOOK_URL = env('SLACK_WEBHOOK_URL', default='')
 TEAMS_WEBHOOK_URL = env('TEAMS_WEBHOOK_URL', default='')
+
+# --------------------------------------------------------------------------- #
+# Celery Beat periodic tasks
+# --------------------------------------------------------------------------- #
+CELERY_BEAT_SCHEDULE = {
+    'run-all-probes': {
+        'task': 'assets.tasks.run_all_probes',
+        'schedule': 300.0,  # every 5 minutes
+    },
+    'check-sla-breaches': {
+        'task': 'incidents.tasks.check_sla_breaches',
+        'schedule': 900.0,  # every 15 minutes
+    },
+}
