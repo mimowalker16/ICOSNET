@@ -1,0 +1,218 @@
+import { useState } from 'react'
+import { useParams, Link } from 'react-router'
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { format } from 'date-fns'
+import { ArrowLeft, Send, AlertCircle } from 'lucide-react'
+import { Card, CardContent, CardHeader, CardTitle } from '~/components/ui/card'
+import { Badge } from '~/components/ui/badge'
+import { Button } from '~/components/ui/button'
+import { Separator } from '~/components/ui/separator'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '~/components/ui/select'
+import { getIncident, transitionIncident, updateIncident, addIncidentComment } from '~/lib/services/incidents'
+import { getUsers } from '~/lib/services/users'
+import type { Incident, IncidentLog, User } from '~/types'
+
+const VALID_TRANSITIONS: Record<string, string[]> = {
+  NEW: ['ASSIGNED'],
+  ASSIGNED: ['IN_PROGRESS', 'NEW'],
+  IN_PROGRESS: ['RESOLVED', 'ASSIGNED'],
+  RESOLVED: ['CLOSED', 'IN_PROGRESS'],
+  CLOSED: [],
+}
+
+function severityVariant(s: string) {
+  return s === 'CRITICAL' || s === 'HIGH' ? ('destructive' as const) : ('secondary' as const)
+}
+
+export default function IncidentDetail() {
+  const { id } = useParams()
+  const incidentId = Number(id)
+  const queryClient = useQueryClient()
+  const [comment, setComment] = useState('')
+  const [assignTo, setAssignTo] = useState('')
+  const [transitionError, setTransitionError] = useState('')
+
+  const { data: incident } = useQuery<Incident>({
+    queryKey: ['incident', incidentId],
+    queryFn: () => getIncident(incidentId),
+  })
+
+  const { data: users = [] } = useQuery<User[]>({
+    queryKey: ['users'],
+    queryFn: getUsers,
+  })
+
+  const transitionMut = useMutation({
+    mutationFn: async ({ status, assignTo }: { status: string; assignTo?: string }) => {
+      if (status === 'ASSIGNED' && assignTo) {
+        await updateIncident(incidentId, { assigned_to: Number(assignTo) })
+      }
+      return transitionIncident(incidentId, status)
+    },
+    onSuccess: (updated) => {
+      setTransitionError('')
+      // Immediately update the cache with the returned data — no refetch lag
+      queryClient.setQueryData<Incident>(['incident', incidentId], updated)
+      // Also invalidate the list so the incidents table reflects the change
+      queryClient.invalidateQueries({ queryKey: ['incidents'] })
+    },
+    onError: (err: unknown) => {
+      const msg =
+        (err as { response?: { data?: { detail?: string } } })?.response?.data?.detail
+        ?? 'Transition failed — check if this status change is allowed'
+      setTransitionError(msg)
+    },
+  })
+
+  const commentMut = useMutation({
+    mutationFn: (text: string) => addIncidentComment(incidentId, text),
+    onSuccess: (newLog: IncidentLog) => {
+      setComment('')
+      // Append the new log directly instead of a full refetch
+      queryClient.setQueryData<Incident>(['incident', incidentId], (prev) =>
+        prev ? { ...prev, logs: [...(prev.logs ?? []), newLog] } : prev
+      )
+    },
+  })
+
+  if (!incident) return <div className="p-8 text-center text-muted-foreground">Loading...</div>
+
+  const allowed = VALID_TRANSITIONS[incident.status] ?? []
+
+  function handleTransition(newStatus: string) {
+    transitionMut.mutate({
+      status: newStatus,
+      assignTo: newStatus === 'ASSIGNED' ? assignTo : undefined,
+    })
+  }
+
+  return (
+    <div className="space-y-6">
+      <div className="flex items-center gap-4">
+        <Link to="/incidents">
+          <Button variant="ghost" size="icon"><ArrowLeft className="h-4 w-4" /></Button>
+        </Link>
+        <h1 className="text-2xl font-bold flex-1">{incident.title}</h1>
+        <Badge variant={severityVariant(incident.severity)}>{incident.severity}</Badge>
+        <Badge variant="outline">{incident.status}</Badge>
+        {incident.is_sla_breached && <Badge variant="destructive">SLA Breached</Badge>}
+      </div>
+
+      <div className="grid gap-4 sm:grid-cols-3">
+        <Card>
+          <CardHeader className="pb-2"><CardTitle className="text-sm font-medium">Asset</CardTitle></CardHeader>
+          <CardContent>
+            {incident.asset ? (
+              <Link to={`/assets/${incident.asset}`} className="text-primary hover:underline">{incident.asset_name}</Link>
+            ) : '—'}
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="pb-2"><CardTitle className="text-sm font-medium">Assigned To</CardTitle></CardHeader>
+          <CardContent>{incident.assigned_to_username || 'Unassigned'}</CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="pb-2"><CardTitle className="text-sm font-medium">SLA Deadline</CardTitle></CardHeader>
+          <CardContent>
+            {incident.sla_deadline ? format(new Date(incident.sla_deadline), 'MMM d, HH:mm') : '—'}
+          </CardContent>
+        </Card>
+      </div>
+
+      {incident.description && (
+        <Card>
+          <CardHeader><CardTitle>Description</CardTitle></CardHeader>
+          <CardContent className="whitespace-pre-wrap text-sm">{incident.description}</CardContent>
+        </Card>
+      )}
+
+      {allowed.length > 0 && (
+        <Card>
+          <CardHeader><CardTitle>Actions</CardTitle></CardHeader>
+          <CardContent className="flex flex-wrap items-center gap-3">
+            {transitionError && (
+              <div className="w-full flex items-center gap-2 rounded-md border border-destructive/50 bg-destructive/10 px-3 py-2 text-sm text-destructive">
+                <AlertCircle className="h-4 w-4 shrink-0" />
+                {transitionError}
+              </div>
+            )}
+            {allowed.includes('ASSIGNED') && (
+              <Select value={assignTo} onValueChange={setAssignTo}>
+                <SelectTrigger className="w-48"><SelectValue placeholder="Assign to..." /></SelectTrigger>
+                <SelectContent>
+                  {users.map((u) => (
+                    <SelectItem key={u.id} value={String(u.id)}>{u.username}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
+            {allowed.map((s) => (
+              <Button
+                key={s}
+                onClick={() => handleTransition(s)}
+                disabled={transitionMut.isPending}
+                variant={s === 'RESOLVED' || s === 'CLOSED' ? 'default' : 'outline'}
+              >
+                {s.replace('_', ' ')}
+              </Button>
+            ))}
+          </CardContent>
+        </Card>
+      )}
+
+      <Card>
+        <CardHeader><CardTitle>Activity Timeline</CardTitle></CardHeader>
+        <CardContent className="space-y-4">
+          {incident.logs && incident.logs.length > 0 ? (
+            incident.logs.map((log) => (
+              <div key={log.id} className="flex gap-3">
+                <div className="flex flex-col items-center">
+                  <div className="h-2.5 w-2.5 rounded-full bg-primary mt-1.5" />
+                  <div className="flex-1 w-px bg-border" />
+                </div>
+                <div className="pb-4">
+                  <div className="text-sm font-medium">
+                    {log.action_type === 'COMMENT' ? 'Comment' : log.action_type.replace('_', ' ')}
+                    {log.actor_username && <span className="text-muted-foreground"> by {log.actor_username}</span>}
+                  </div>
+                  {log.action_type === 'STATUS_CHANGE' && (
+                    <p className="text-sm text-muted-foreground">{log.old_value} → {log.new_value}</p>
+                  )}
+                  {log.comment && <p className="text-sm mt-1">{log.comment}</p>}
+                  <p className="text-xs text-muted-foreground mt-1">{format(new Date(log.created_at), 'MMM d, HH:mm')}</p>
+                </div>
+              </div>
+            ))
+          ) : (
+            <p className="text-sm text-muted-foreground">No activity yet</p>
+          )}
+
+          <Separator />
+
+          <div className="flex gap-2">
+            <textarea
+              value={comment}
+              onChange={(e) => setComment(e.target.value)}
+              placeholder="Add a comment..."
+              rows={2}
+              className="flex-1 rounded-md border border-input bg-transparent px-3 py-2 text-sm outline-none placeholder:text-muted-foreground focus:ring-2 focus:ring-ring"
+            />
+            <Button
+              size="icon"
+              disabled={!comment.trim() || commentMut.isPending}
+              onClick={() => commentMut.mutate(comment.trim())}
+            >
+              <Send className="h-4 w-4" />
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+    </div>
+  )
+}
