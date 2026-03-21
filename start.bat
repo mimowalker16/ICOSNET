@@ -36,6 +36,9 @@ timeout /t 2 /nobreak >nul
 echo       Celery worker running (pool=solo)
 echo.
 
+start "ICOSNET — Celery Beat" cmd /k "cd /d "%BACKEND%" && python -m celery -A config beat -l info --scheduler django_celery_beat.schedulers:DatabaseScheduler"
+```> start "ICOSNET — Celery Beat" cmd /k "cd /d "%BACKEND%" && python -m celery -A config beat -l info --scheduler django_celery_beat.schedulers:DatabaseScheduler"
+
 :: ── 4. Frontend (Vite) ────────────────────────────────────────────────────────
 echo [4/4] Starting frontend...
 start "ICOSNET — Frontend" cmd /k "cd /d "%FRONTEND%" && npm run dev"
