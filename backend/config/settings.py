@@ -144,6 +144,7 @@ CELERY_ACCEPT_CONTENT = ['json']
 CELERY_TASK_SERIALIZER = 'json'
 CELERY_RESULT_SERIALIZER = 'json'
 CELERY_TIMEZONE = TIME_ZONE
+CELERY_BROKER_CONNECTION_RETRY_ON_STARTUP = True
 
 # --------------------------------------------------------------------------- #
 # Email
@@ -175,10 +176,10 @@ TEAMS_WEBHOOK_URL = env('TEAMS_WEBHOOK_URL', default='')
 CELERY_BEAT_SCHEDULE = {
     'run-all-probes': {
         'task': 'assets.tasks.run_all_probes',
-        'schedule': 300.0,  # every 5 minutes
+        'schedule': 100.0,  # every 100 seconds
     },
     'check-sla-breaches': {
         'task': 'incidents.tasks.check_sla_breaches',
-        'schedule': 900.0,  # every 15 minutes
+        'schedule': 200.0,  # every 200 seconds
     },
 }
