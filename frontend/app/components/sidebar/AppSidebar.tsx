@@ -33,9 +33,9 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const items = isAdmin ? [...navItems, ...adminItems] : navItems
 
   return (
-    <Sidebar variant="inset" {...props}>
+    <Sidebar variant="inset" collapsible="icon" {...props}>
       <SidebarHeader>
-        <a href="/dashboard" className="flex items-center justify-center p-2">
+        <a href="/dashboard" className="flex items-center justify-center p-2 group-data-[collapsible=icon]:hidden">
           <img
             src="/icosnet.svg"
             alt="ICOSNET"
