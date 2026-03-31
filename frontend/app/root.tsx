@@ -14,7 +14,7 @@ import type { Route } from "./+types/root";
 import "./app.css";
 
 const queryClient = new QueryClient({
-  defaultOptions: { queries: { staleTime: 30_000, retry: 1 } },
+  defaultOptions: { queries: { staleTime: 30_000, retry: 1, refetchInterval: 30_000 } },
 });
 
 export const links: Route.LinksFunction = () => [

@@ -34,6 +34,12 @@ import {
   DialogTitle,
 } from '~/components/ui/dialog'
 import {
+  Drawer,
+  DrawerContent,
+  DrawerHeader,
+  DrawerTitle,
+} from '~/components/ui/drawer'
+import {
   Select,
   SelectContent,
   SelectItem,
@@ -135,11 +141,13 @@ export default function AssetDetail() {
         </Button>
       </div>
 
-      {/* Edit Dialog */}
-      <Dialog open={editOpen} onOpenChange={setEditOpen}>
-        <DialogContent>
-          <DialogHeader><DialogTitle>Edit Asset</DialogTitle></DialogHeader>
-          <form onSubmit={handleEdit} className="space-y-4">
+      {/* Edit Drawer — slides up from bottom */}
+      <Drawer open={editOpen} onOpenChange={setEditOpen} direction="bottom">
+        <DrawerContent>
+          <DrawerHeader className="text-left">
+            <DrawerTitle>Edit Asset</DrawerTitle>
+          </DrawerHeader>
+          <form onSubmit={handleEdit} className="space-y-4 overflow-y-auto px-4 pb-6">
             <div className="grid gap-2">
               <Label htmlFor="name">Name</Label>
               <Input id="name" name="name" required defaultValue={asset.name} />
@@ -201,8 +209,8 @@ export default function AssetDetail() {
               {editMut.isPending ? 'Saving...' : 'Save Changes'}
             </Button>
           </form>
-        </DialogContent>
-      </Dialog>
+        </DrawerContent>
+      </Drawer>
 
       {/* Delete Confirmation Dialog */}
       <Dialog open={deleteOpen} onOpenChange={setDeleteOpen}>
