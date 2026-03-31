@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { useParams, Link } from 'react-router'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { format } from 'date-fns'
-import { ArrowLeft, Send, AlertCircle } from 'lucide-react'
+import { ArrowLeft, Send, AlertCircle, Pencil } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '~/components/ui/card'
 import { Badge } from '~/components/ui/badge'
 import { Button } from '~/components/ui/button'
@@ -14,6 +14,14 @@ import {
   SelectTrigger,
   SelectValue,
 } from '~/components/ui/select'
+import { Input } from '~/components/ui/input'
+import { Label } from '~/components/ui/label'
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from '~/components/ui/dialog'
 import { getIncident, transitionIncident, updateIncident, addIncidentComment } from '~/lib/services/incidents'
 import { getUsers } from '~/lib/services/users'
 import type { Incident, IncidentLog, User } from '~/types'
@@ -37,6 +45,7 @@ export default function IncidentDetail() {
   const [comment, setComment] = useState('')
   const [assignTo, setAssignTo] = useState('')
   const [transitionError, setTransitionError] = useState('')
+  const [editOpen, setEditOpen] = useState(false)
 
   const { data: incident } = useQuery<Incident>({
     queryKey: ['incident', incidentId],
@@ -81,6 +90,15 @@ export default function IncidentDetail() {
     },
   })
 
+  const editMut = useMutation({
+    mutationFn: (payload: { title: string; description: string; severity: Incident['severity'] }) =>
+      updateIncident(incidentId, payload),
+    onSuccess: (updated) => {
+      queryClient.setQueryData<Incident>(['incident', incidentId], updated)
+      setEditOpen(false)
+    },
+  })
+
   if (!incident) return <div className="p-8 text-center text-muted-foreground">Loading...</div>
 
   const allowed = VALID_TRANSITIONS[incident.status] ?? []
@@ -102,7 +120,59 @@ export default function IncidentDetail() {
         <Badge variant={severityVariant(incident.severity)}>{incident.severity}</Badge>
         <Badge variant="outline">{incident.status}</Badge>
         {incident.is_sla_breached && <Badge variant="destructive">SLA Breached</Badge>}
+        <Button variant="outline" size="sm" onClick={() => setEditOpen(true)}>
+          <Pencil className="mr-2 h-4 w-4" /> Edit
+        </Button>
       </div>
+
+      <Dialog open={editOpen} onOpenChange={setEditOpen}>
+        <DialogContent>
+          <DialogHeader><DialogTitle>Edit Incident</DialogTitle></DialogHeader>
+          <form
+            onSubmit={(e) => {
+              e.preventDefault()
+              const fd = new FormData(e.currentTarget)
+              editMut.mutate({
+                title: fd.get('title') as string,
+                description: fd.get('description') as string,
+                severity: fd.get('severity') as Incident['severity'],
+              })
+            }}
+            className="space-y-4"
+          >
+            <div className="grid gap-2">
+              <Label htmlFor="inc-title">Title</Label>
+              <Input id="inc-title" name="title" required defaultValue={incident.title} />
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="inc-description">Description</Label>
+              <textarea
+                id="inc-description"
+                name="description"
+                rows={3}
+                defaultValue={incident.description ?? ''}
+                className="w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm outline-none placeholder:text-muted-foreground focus:ring-2 focus:ring-ring"
+              />
+            </div>
+            <div className="grid gap-2">
+              <Label>Severity</Label>
+              <Select name="severity" defaultValue={incident.severity}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="CRITICAL">Critical</SelectItem>
+                  <SelectItem value="HIGH">High</SelectItem>
+                  <SelectItem value="MEDIUM">Medium</SelectItem>
+                  <SelectItem value="LOW">Low</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            {editMut.isError && <p className="text-sm text-red-500">Failed to save changes</p>}
+            <Button type="submit" className="w-full" disabled={editMut.isPending}>
+              {editMut.isPending ? 'Saving...' : 'Save Changes'}
+            </Button>
+          </form>
+        </DialogContent>
+      </Dialog>
 
       <div className="grid gap-4 sm:grid-cols-3">
         <Card>

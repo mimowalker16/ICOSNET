@@ -1,6 +1,6 @@
 import { useState, type FormEvent } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { Plus } from 'lucide-react'
+import { Plus, Pencil } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '~/components/ui/card'
 import { Button } from '~/components/ui/button'
 import { Input } from '~/components/ui/input'
@@ -59,6 +59,7 @@ function UsersSection() {
   const queryClient = useQueryClient()
   const [open, setOpen] = useState(false)
   const [error, setError] = useState('')
+  const [editUser, setEditUser] = useState<User | null>(null)
 
   const { data: users = [] } = useQuery<User[]>({
     queryKey: ['users'],
@@ -79,6 +80,15 @@ function UsersSection() {
     mutationFn: ({ id, is_active }: { id: number; is_active: boolean }) =>
       updateUser(id, { is_active }),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['users'] }),
+  })
+
+  const editMut = useMutation({
+    mutationFn: ({ id, payload }: { id: number; payload: Partial<User> }) =>
+      updateUser(id, payload),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['users'] })
+      setEditUser(null)
+    },
   })
 
   function handleCreate(e: FormEvent<HTMLFormElement>) {
@@ -169,19 +179,82 @@ function UsersSection() {
                   </Badge>
                 </TableCell>
                 <TableCell>
-                  <Button
-                    size="sm"
-                    variant="ghost"
-                    onClick={() => toggleMut.mutate({ id: user.id, is_active: !user.is_active })}
-                  >
-                    {user.is_active ? 'Deactivate' : 'Activate'}
-                  </Button>
+                  <div className="flex items-center gap-2">
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      onClick={() => setEditUser(user)}
+                    >
+                      <Pencil className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      onClick={() => toggleMut.mutate({ id: user.id, is_active: !user.is_active })}
+                    >
+                      {user.is_active ? 'Deactivate' : 'Activate'}
+                    </Button>
+                  </div>
                 </TableCell>
               </TableRow>
             ))}
           </TableBody>
         </Table>
       </CardContent>
+
+      {/* Edit User Dialog */}
+      <Dialog open={!!editUser} onOpenChange={(o) => { if (!o) setEditUser(null) }}>
+        <DialogContent>
+          <DialogHeader><DialogTitle>Edit User</DialogTitle></DialogHeader>
+          {editUser && (
+            <form
+              onSubmit={(e) => {
+                e.preventDefault()
+                const fd = new FormData(e.currentTarget)
+                editMut.mutate({
+                  id: editUser.id,
+                  payload: {
+                    email: fd.get('email') as string,
+                    first_name: fd.get('first_name') as string,
+                    last_name: fd.get('last_name') as string,
+                    role: fd.get('role') as User['role'],
+                  },
+                })
+              }}
+              className="space-y-4"
+            >
+              <div className="grid grid-cols-2 gap-4">
+                <div className="grid gap-2">
+                  <Label htmlFor="edit_first_name">First Name</Label>
+                  <Input id="edit_first_name" name="first_name" defaultValue={editUser.first_name} />
+                </div>
+                <div className="grid gap-2">
+                  <Label htmlFor="edit_last_name">Last Name</Label>
+                  <Input id="edit_last_name" name="last_name" defaultValue={editUser.last_name} />
+                </div>
+              </div>
+              <div className="grid gap-2">
+                <Label htmlFor="edit_email">Email</Label>
+                <Input id="edit_email" name="email" type="email" required defaultValue={editUser.email} />
+              </div>
+              <div className="grid gap-2">
+                <Label>Role</Label>
+                <Select name="role" defaultValue={editUser.role}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="ADMIN">Admin</SelectItem>
+                    <SelectItem value="TECHNICIAN">Technician</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              {editMut.isError && <p className="text-sm text-red-500">Failed to save changes</p>}
+              <Button type="submit" className="w-full" disabled={editMut.isPending}>
+                {editMut.isPending ? 'Saving...' : 'Save Changes'}
+              </Button>
+            </form>
+          )}
+        </DialogContent>
+      </Dialog>
     </Card>
   )
 }

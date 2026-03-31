@@ -1,7 +1,8 @@
-import { useQuery } from '@tanstack/react-query'
-import { useParams, Link } from 'react-router'
+import { useState } from 'react'
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { useParams, Link, useNavigate } from 'react-router'
 import { format } from 'date-fns'
-import { ArrowLeft } from 'lucide-react'
+import { ArrowLeft, Pencil, Trash2 } from 'lucide-react'
 import {
   AreaChart,
   Area,
@@ -22,8 +23,23 @@ import {
   TableHeader,
   TableRow,
 } from '~/components/ui/table'
-import { getAsset, getStatusHistory } from '~/lib/services/assets'
+import { getAsset, getStatusHistory, updateAsset, deleteAsset } from '~/lib/services/assets'
 import { getIncidents } from '~/lib/services/incidents'
+import { Input } from '~/components/ui/input'
+import { Label } from '~/components/ui/label'
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from '~/components/ui/dialog'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '~/components/ui/select'
 import type { Asset, StatusLog, Incident } from '~/types'
 
 function statusColor(status?: string) {
@@ -38,6 +54,10 @@ function statusColor(status?: string) {
 export default function AssetDetail() {
   const { id } = useParams()
   const assetId = Number(id)
+  const navigate = useNavigate()
+  const queryClient = useQueryClient()
+  const [editOpen, setEditOpen] = useState(false)
+  const [deleteOpen, setDeleteOpen] = useState(false)
 
   const { data: asset } = useQuery<Asset>({
     queryKey: ['asset', assetId],
@@ -54,6 +74,23 @@ export default function AssetDetail() {
     queryFn: () => getIncidents({ asset: String(assetId) }),
   })
 
+  const editMut = useMutation({
+    mutationFn: (payload: Partial<Asset>) => updateAsset(assetId, payload),
+    onSuccess: (updated) => {
+      queryClient.setQueryData<Asset>(['asset', assetId], updated)
+      queryClient.invalidateQueries({ queryKey: ['assets'] })
+      setEditOpen(false)
+    },
+  })
+
+  const deleteMut = useMutation({
+    mutationFn: () => deleteAsset(assetId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['assets'] })
+      navigate('/assets')
+    },
+  })
+
   const chartData = history
     .slice()
     .reverse()
@@ -64,17 +101,125 @@ export default function AssetDetail() {
 
   if (!asset) return <div className="p-8 text-center text-muted-foreground">Loading...</div>
 
+  function handleEdit(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault()
+    const fd = new FormData(e.currentTarget)
+    const port = fd.get('check_port') as string
+    editMut.mutate({
+      name: fd.get('name') as string,
+      ip_address_or_url: fd.get('ip_address_or_url') as string,
+      asset_type: fd.get('asset_type') as Asset['asset_type'],
+      check_type: fd.get('check_type') as Asset['check_type'],
+      check_port: port ? Number(port) : null,
+      check_interval_minutes: Number(fd.get('check_interval_minutes')),
+      description: fd.get('description') as string,
+      is_active: fd.get('is_active') === 'true',
+    })
+  }
+
   return (
     <div className="space-y-6">
       <div className="flex items-center gap-4">
         <Link to="/assets">
           <Button variant="ghost" size="icon"><ArrowLeft className="h-4 w-4" /></Button>
         </Link>
-        <h1 className="text-2xl font-bold">{asset.name}</h1>
+        <h1 className="text-2xl font-bold flex-1">{asset.name}</h1>
         <Badge className={statusColor(asset.latest_status?.status)}>
           {asset.latest_status?.status ?? 'N/A'}
         </Badge>
+        <Button variant="outline" size="sm" onClick={() => setEditOpen(true)}>
+          <Pencil className="mr-2 h-4 w-4" /> Edit
+        </Button>
+        <Button variant="destructive" size="sm" onClick={() => setDeleteOpen(true)}>
+          <Trash2 className="mr-2 h-4 w-4" /> Delete
+        </Button>
       </div>
+
+      {/* Edit Dialog */}
+      <Dialog open={editOpen} onOpenChange={setEditOpen}>
+        <DialogContent>
+          <DialogHeader><DialogTitle>Edit Asset</DialogTitle></DialogHeader>
+          <form onSubmit={handleEdit} className="space-y-4">
+            <div className="grid gap-2">
+              <Label htmlFor="name">Name</Label>
+              <Input id="name" name="name" required defaultValue={asset.name} />
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="ip_address_or_url">IP / URL</Label>
+              <Input id="ip_address_or_url" name="ip_address_or_url" required defaultValue={asset.ip_address_or_url} />
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="grid gap-2">
+                <Label>Asset Type</Label>
+                <Select name="asset_type" defaultValue={asset.asset_type}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="SERVER">Server</SelectItem>
+                    <SelectItem value="ROUTER">Router</SelectItem>
+                    <SelectItem value="API">API</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="grid gap-2">
+                <Label>Check Type</Label>
+                <Select name="check_type" defaultValue={asset.check_type}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="PING">PING</SelectItem>
+                    <SelectItem value="TCP">TCP</SelectItem>
+                    <SelectItem value="HTTP_GET">HTTP GET</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="grid gap-2">
+                <Label htmlFor="check_port">Check Port</Label>
+                <Input id="check_port" name="check_port" type="number" defaultValue={asset.check_port ?? ''} placeholder="Optional" />
+              </div>
+              <div className="grid gap-2">
+                <Label htmlFor="check_interval_minutes">Interval (min)</Label>
+                <Input id="check_interval_minutes" name="check_interval_minutes" type="number" required defaultValue={asset.check_interval_minutes} min={1} />
+              </div>
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="description">Description</Label>
+              <Input id="description" name="description" defaultValue={asset.description ?? ''} />
+            </div>
+            <div className="grid gap-2">
+              <Label>Status</Label>
+              <Select name="is_active" defaultValue={String(asset.is_active)}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="true">Active</SelectItem>
+                  <SelectItem value="false">Inactive</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            {editMut.isError && <p className="text-sm text-red-500">Failed to save changes</p>}
+            <Button type="submit" className="w-full" disabled={editMut.isPending}>
+              {editMut.isPending ? 'Saving...' : 'Save Changes'}
+            </Button>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete Confirmation Dialog */}
+      <Dialog open={deleteOpen} onOpenChange={setDeleteOpen}>
+        <DialogContent>
+          <DialogHeader><DialogTitle>Delete Asset</DialogTitle></DialogHeader>
+          <p className="text-sm text-muted-foreground">
+            Are you sure you want to delete <strong>{asset.name}</strong>? This action cannot be undone.
+          </p>
+          {deleteMut.isError && <p className="text-sm text-red-500">Failed to delete asset</p>}
+          <div className="flex justify-end gap-3 mt-2">
+            <Button variant="outline" onClick={() => setDeleteOpen(false)}>Cancel</Button>
+            <Button variant="destructive" disabled={deleteMut.isPending} onClick={() => deleteMut.mutate()}>
+              {deleteMut.isPending ? 'Deleting...' : 'Delete'}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       <div className="grid gap-4 sm:grid-cols-3">
         <Card>
