@@ -23,7 +23,7 @@ export function NavMain({ items }: { items: NavItem[] }) {
       <SidebarMenu>
         {items.map((item) => (
           <SidebarMenuItem key={item.title}>
-            <SidebarMenuButton asChild tooltip={item.title}>
+            <SidebarMenuButton asChild tooltip={item.title} className="h-9 [&_svg]:size-5">
               <NavLink
                 to={item.to}
                 className={({ isActive }) =>

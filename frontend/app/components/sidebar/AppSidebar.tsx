@@ -12,9 +12,6 @@ import {
   SidebarContent,
   SidebarFooter,
   SidebarHeader,
-  SidebarMenu,
-  SidebarMenuButton,
-  SidebarMenuItem,
 } from '~/components/ui/sidebar'
 import { NavMain } from '~/components/sidebar/NavMain'
 import { NavUser } from '~/components/sidebar/NavUser'
@@ -38,21 +35,13 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   return (
     <Sidebar variant="inset" {...props}>
       <SidebarHeader>
-        <SidebarMenu>
-          <SidebarMenuItem>
-            <SidebarMenuButton size="lg" asChild>
-              <a href="/dashboard">
-                <div className="flex aspect-square size-8 items-center justify-center rounded-lg bg-sidebar-primary text-sidebar-primary-foreground font-bold text-xs">
-                  IC
-                </div>
-                <div className="grid flex-1 text-left text-sm leading-tight">
-                  <span className="truncate font-semibold">ICOSNET ITSM</span>
-                  <span className="truncate text-xs text-muted-foreground">Supervision Platform</span>
-                </div>
-              </a>
-            </SidebarMenuButton>
-          </SidebarMenuItem>
-        </SidebarMenu>
+        <a href="/dashboard" className="flex items-center justify-center p-2">
+          <img
+            src="/icosnet.svg"
+            alt="ICOSNET"
+            className="h-10 w-auto object-contain"
+          />
+        </a>
       </SidebarHeader>
       <SidebarContent>
         <NavMain items={items} />
