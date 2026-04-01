@@ -7,6 +7,9 @@ import { Card, CardContent, CardHeader, CardTitle } from '~/components/ui/card'
 import { Badge } from '~/components/ui/badge'
 import { Button } from '~/components/ui/button'
 import { Separator } from '~/components/ui/separator'
+import { Textarea } from '~/components/ui/textarea'
+import { Alert, AlertDescription } from '~/components/ui/alert'
+import { Skeleton } from '~/components/ui/skeleton'
 import {
   Select,
   SelectContent,
@@ -99,7 +102,17 @@ export default function IncidentDetail() {
     },
   })
 
-  if (!incident) return <div className="p-8 text-center text-muted-foreground">Loading...</div>
+  if (!incident) return (
+    <div className="space-y-6">
+      <Skeleton className="h-8 w-64" />
+      <div className="grid gap-4 sm:grid-cols-3">
+        <Skeleton className="h-24" />
+        <Skeleton className="h-24" />
+        <Skeleton className="h-24" />
+      </div>
+      <Skeleton className="h-48" />
+    </div>
+  )
 
   const allowed = VALID_TRANSITIONS[incident.status] ?? []
 
@@ -114,14 +127,14 @@ export default function IncidentDetail() {
     <div className="space-y-6">
       <div className="flex items-center gap-4">
         <Link to="/incidents">
-          <Button variant="ghost" size="icon"><ArrowLeft className="h-4 w-4" /></Button>
+          <Button variant="ghost" size="icon"><ArrowLeft className="size-4" /></Button>
         </Link>
         <h1 className="text-2xl font-bold flex-1">{incident.title}</h1>
         <Badge variant={severityVariant(incident.severity)}>{incident.severity}</Badge>
         <Badge variant="outline">{incident.status}</Badge>
         {incident.is_sla_breached && <Badge variant="destructive">SLA Breached</Badge>}
         <Button variant="outline" size="sm" onClick={() => setEditOpen(true)}>
-          <Pencil className="mr-2 h-4 w-4" /> Edit
+          <Pencil /> Edit
         </Button>
       </div>
 
@@ -146,12 +159,11 @@ export default function IncidentDetail() {
             </div>
             <div className="grid gap-2">
               <Label htmlFor="inc-description">Description</Label>
-              <textarea
+              <Textarea
                 id="inc-description"
                 name="description"
                 rows={3}
                 defaultValue={incident.description ?? ''}
-                className="w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm outline-none placeholder:text-muted-foreground focus:ring-2 focus:ring-ring"
               />
             </div>
             <div className="grid gap-2">
@@ -166,7 +178,12 @@ export default function IncidentDetail() {
                 </SelectContent>
               </Select>
             </div>
-            {editMut.isError && <p className="text-sm text-red-500">Failed to save changes</p>}
+            {editMut.isError && (
+              <Alert variant="destructive">
+                <AlertCircle />
+                <AlertDescription>Failed to save changes</AlertDescription>
+              </Alert>
+            )}
             <Button type="submit" className="w-full" disabled={editMut.isPending}>
               {editMut.isPending ? 'Saving...' : 'Save Changes'}
             </Button>
@@ -207,10 +224,10 @@ export default function IncidentDetail() {
           <CardHeader><CardTitle>Actions</CardTitle></CardHeader>
           <CardContent className="flex flex-wrap items-center gap-3">
             {transitionError && (
-              <div className="w-full flex items-center gap-2 rounded-md border border-destructive/50 bg-destructive/10 px-3 py-2 text-sm text-destructive">
-                <AlertCircle className="h-4 w-4 shrink-0" />
-                {transitionError}
-              </div>
+              <Alert variant="destructive" className="w-full">
+                <AlertCircle />
+                <AlertDescription>{transitionError}</AlertDescription>
+              </Alert>
             )}
             {allowed.includes('ASSIGNED') && (
               <Select value={assignTo} onValueChange={setAssignTo}>
@@ -266,19 +283,19 @@ export default function IncidentDetail() {
           <Separator />
 
           <div className="flex gap-2">
-            <textarea
+            <Textarea
               value={comment}
               onChange={(e) => setComment(e.target.value)}
               placeholder="Add a comment..."
               rows={2}
-              className="flex-1 rounded-md border border-input bg-transparent px-3 py-2 text-sm outline-none placeholder:text-muted-foreground focus:ring-2 focus:ring-ring"
+              className="flex-1"
             />
             <Button
               size="icon"
               disabled={!comment.trim() || commentMut.isPending}
               onClick={() => commentMut.mutate(comment.trim())}
             >
-              <Send className="h-4 w-4" />
+              <Send className="size-4" />
             </Button>
           </div>
         </CardContent>

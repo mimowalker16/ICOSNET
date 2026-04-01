@@ -5,6 +5,8 @@ import { Button } from '~/components/ui/button'
 import { Input } from '~/components/ui/input'
 import { Label } from '~/components/ui/label'
 import { Card, CardContent, CardHeader, CardTitle } from '~/components/ui/card'
+import { Alert, AlertDescription } from '~/components/ui/alert'
+import { AlertCircle } from 'lucide-react'
 import {
   Select,
   SelectContent,
@@ -107,7 +109,12 @@ export default function AssetNew() {
               <Input id="description" name="description" placeholder="Optional description" />
             </div>
 
-            {error && <p className="text-sm text-red-500">{error}</p>}
+            {error && (
+              <Alert variant="destructive">
+                <AlertCircle />
+                <AlertDescription>{error}</AlertDescription>
+              </Alert>
+            )}
 
             <div className="flex gap-3">
               <Button type="submit" disabled={mutation.isPending}>

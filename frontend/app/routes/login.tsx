@@ -11,6 +11,8 @@ import {
 } from '~/components/ui/card'
 import { Input } from '~/components/ui/input'
 import { Label } from '~/components/ui/label'
+import { Alert, AlertDescription } from '~/components/ui/alert'
+import { AlertCircle } from 'lucide-react'
 
 export default function Login() {
   const { login, user, loading: authLoading } = useAuth()
@@ -60,7 +62,12 @@ export default function Login() {
                     <Label htmlFor="password">Password</Label>
                     <Input id="password" type="password" name="password" required />
                   </div>
-                  {error && <p className="text-sm text-red-500">{error}</p>}
+                  {error && (
+                    <Alert variant="destructive">
+                      <AlertCircle />
+                      <AlertDescription>{error}</AlertDescription>
+                    </Alert>
+                  )}
                   <Button type="submit" className="w-full" disabled={loading}>
                     {loading ? 'Signing in...' : 'Sign in'}
                   </Button>

@@ -21,6 +21,7 @@ import {
   TableRow,
 } from '~/components/ui/table'
 import { getAssets } from '~/lib/services/assets'
+import { Skeleton } from '~/components/ui/skeleton'
 import type { Asset } from '~/types'
 
 function statusBadge(status?: string) {
@@ -52,14 +53,14 @@ export default function AssetsList() {
         <h1 className="text-2xl font-bold">Assets</h1>
         <Link to="/assets/new">
           <Button>
-            <Plus className="mr-2 h-4 w-4" /> Add Asset
+            <Plus /> Add Asset
           </Button>
         </Link>
       </div>
 
       <div className="flex gap-3">
         <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+          <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
           <Input
             placeholder="Search assets..."
             value={search}
@@ -94,11 +95,11 @@ export default function AssetsList() {
           </TableHeader>
           <TableBody>
             {isLoading ? (
-              <TableRow>
-                <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
-                  Loading...
-                </TableCell>
-              </TableRow>
+              Array.from({ length: 5 }).map((_, i) => (
+                <TableRow key={i}>
+                  <TableCell colSpan={6}><Skeleton className="h-4 w-full" /></TableCell>
+                </TableRow>
+              ))
             ) : assets.length === 0 ? (
               <TableRow>
                 <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">

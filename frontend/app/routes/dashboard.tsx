@@ -59,7 +59,7 @@ export default function Dashboard() {
         <Card>
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-sm font-medium">Total Assets</CardTitle>
-            <Server className="h-4 w-4 text-muted-foreground" />
+            <Server className="size-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{assets.length}</div>
@@ -68,7 +68,7 @@ export default function Dashboard() {
         <Card>
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-sm font-medium">Uptime</CardTitle>
-            <CheckCircle className="h-4 w-4 text-green-500" />
+            <CheckCircle className="size-4 text-green-500" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{upPercent}%</div>
@@ -78,7 +78,7 @@ export default function Dashboard() {
         <Card>
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-sm font-medium">Open Incidents</CardTitle>
-            <AlertTriangle className="h-4 w-4 text-yellow-500" />
+            <AlertTriangle className="size-4 text-yellow-500" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{openIncidents.length}</div>
@@ -87,10 +87,10 @@ export default function Dashboard() {
         <Card>
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-sm font-medium">SLA Breached</CardTitle>
-            <Clock className="h-4 w-4 text-red-500" />
+            <Clock className="size-4 text-red-500" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-red-600">{breachedCount}</div>
+            <div className="text-2xl font-bold text-destructive">{breachedCount}</div>
           </CardContent>
         </Card>
       </div>

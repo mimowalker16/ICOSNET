@@ -67,12 +67,12 @@ export function NavUser() {
             </DropdownMenuLabel>
             <DropdownMenuSeparator />
             <DropdownMenuItem>
-              <User className="mr-2 h-4 w-4 text-muted-foreground" />
+              <User className="size-4 text-muted-foreground" />
               Profile
             </DropdownMenuItem>
             <DropdownMenuSeparator />
             <DropdownMenuItem onClick={logout}>
-              <LogOut className="mr-2 h-4 w-4 text-muted-foreground" />
+              <LogOut className="size-4 text-muted-foreground" />
               Log out
             </DropdownMenuItem>
           </DropdownMenuContent>

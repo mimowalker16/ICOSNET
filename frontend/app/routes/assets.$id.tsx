@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useParams, Link, useNavigate } from 'react-router'
 import { format } from 'date-fns'
-import { ArrowLeft, Pencil, Trash2 } from 'lucide-react'
+import { ArrowLeft, Pencil, Trash2, AlertCircle } from 'lucide-react'
 import {
   AreaChart,
   Area,
@@ -15,6 +15,8 @@ import {
 import { Card, CardContent, CardHeader, CardTitle } from '~/components/ui/card'
 import { Badge } from '~/components/ui/badge'
 import { Button } from '~/components/ui/button'
+import { Alert, AlertDescription } from '~/components/ui/alert'
+import { Skeleton } from '~/components/ui/skeleton'
 import {
   Table,
   TableBody,
@@ -105,7 +107,17 @@ export default function AssetDetail() {
       ms: h.response_time_ms ?? 0,
     }))
 
-  if (!asset) return <div className="p-8 text-center text-muted-foreground">Loading...</div>
+  if (!asset) return (
+    <div className="space-y-6">
+      <Skeleton className="h-8 w-64" />
+      <div className="grid gap-4 sm:grid-cols-3">
+        <Skeleton className="h-24" />
+        <Skeleton className="h-24" />
+        <Skeleton className="h-24" />
+      </div>
+      <Skeleton className="h-64" />
+    </div>
+  )
 
   function handleEdit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
@@ -127,17 +139,17 @@ export default function AssetDetail() {
     <div className="space-y-6">
       <div className="flex items-center gap-4">
         <Link to="/assets">
-          <Button variant="ghost" size="icon"><ArrowLeft className="h-4 w-4" /></Button>
+          <Button variant="ghost" size="icon"><ArrowLeft className="size-4" /></Button>
         </Link>
         <h1 className="text-2xl font-bold flex-1">{asset.name}</h1>
         <Badge className={statusColor(asset.latest_status?.status)}>
           {asset.latest_status?.status ?? 'N/A'}
         </Badge>
         <Button variant="outline" size="sm" onClick={() => setEditOpen(true)}>
-          <Pencil className="mr-2 h-4 w-4" /> Edit
+          <Pencil /> Edit
         </Button>
         <Button variant="destructive" size="sm" onClick={() => setDeleteOpen(true)}>
-          <Trash2 className="mr-2 h-4 w-4" /> Delete
+          <Trash2 /> Delete
         </Button>
       </div>
 
@@ -204,7 +216,12 @@ export default function AssetDetail() {
                 </SelectContent>
               </Select>
             </div>
-            {editMut.isError && <p className="text-sm text-red-500">Failed to save changes</p>}
+            {editMut.isError && (
+              <Alert variant="destructive">
+                <AlertCircle />
+                <AlertDescription>Failed to save changes</AlertDescription>
+              </Alert>
+            )}
             <Button type="submit" className="w-full" disabled={editMut.isPending}>
               {editMut.isPending ? 'Saving...' : 'Save Changes'}
             </Button>
@@ -219,7 +236,12 @@ export default function AssetDetail() {
           <p className="text-sm text-muted-foreground">
             Are you sure you want to delete <strong>{asset.name}</strong>? This action cannot be undone.
           </p>
-          {deleteMut.isError && <p className="text-sm text-red-500">Failed to delete asset</p>}
+          {deleteMut.isError && (
+            <Alert variant="destructive">
+              <AlertCircle />
+              <AlertDescription>Failed to delete asset</AlertDescription>
+            </Alert>
+          )}
           <div className="flex justify-end gap-3 mt-2">
             <Button variant="outline" onClick={() => setDeleteOpen(false)}>Cancel</Button>
             <Button variant="destructive" disabled={deleteMut.isPending} onClick={() => deleteMut.mutate()}>

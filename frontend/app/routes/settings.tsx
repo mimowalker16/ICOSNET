@@ -1,12 +1,13 @@
 import { useState, type FormEvent } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { Plus, Pencil } from 'lucide-react'
+import { Plus, Pencil, AlertCircle } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '~/components/ui/card'
 import { Button } from '~/components/ui/button'
 import { Input } from '~/components/ui/input'
 import { Label } from '~/components/ui/label'
 import { Badge } from '~/components/ui/badge'
 import { Separator } from '~/components/ui/separator'
+import { Alert, AlertDescription } from '~/components/ui/alert'
 import {
   Dialog,
   DialogContent,
@@ -111,7 +112,7 @@ function UsersSection() {
         <CardTitle>Users</CardTitle>
         <Dialog open={open} onOpenChange={setOpen}>
           <DialogTrigger asChild>
-            <Button size="sm"><Plus className="mr-2 h-4 w-4" /> Add User</Button>
+            <Button size="sm"><Plus /> Add User</Button>
           </DialogTrigger>
           <DialogContent>
             <DialogHeader><DialogTitle>Create User</DialogTitle></DialogHeader>
@@ -148,7 +149,12 @@ function UsersSection() {
                   </SelectContent>
                 </Select>
               </div>
-              {error && <p className="text-sm text-red-500">{error}</p>}
+              {error && (
+              <Alert variant="destructive">
+                <AlertCircle />
+                <AlertDescription>{error}</AlertDescription>
+              </Alert>
+            )}
               <Button type="submit" className="w-full" disabled={createMut.isPending}>
                 {createMut.isPending ? 'Creating...' : 'Create User'}
               </Button>
@@ -185,7 +191,7 @@ function UsersSection() {
                       variant="ghost"
                       onClick={() => setEditUser(user)}
                     >
-                      <Pencil className="h-4 w-4" />
+                      <Pencil />
                     </Button>
                     <Button
                       size="sm"
@@ -247,7 +253,12 @@ function UsersSection() {
                   </SelectContent>
                 </Select>
               </div>
-              {editMut.isError && <p className="text-sm text-red-500">Failed to save changes</p>}
+              {editMut.isError && (
+              <Alert variant="destructive">
+                <AlertCircle />
+                <AlertDescription>Failed to save changes</AlertDescription>
+              </Alert>
+            )}
               <Button type="submit" className="w-full" disabled={editMut.isPending}>
                 {editMut.isPending ? 'Saving...' : 'Save Changes'}
               </Button>
@@ -326,7 +337,12 @@ function NotificationsSection() {
           <Button type="submit" disabled={saveMut.isPending}>
             {saveMut.isPending ? 'Saving...' : saved ? 'Saved!' : 'Save Notification Settings'}
           </Button>
-          {saveMut.isError && <p className="text-sm text-red-500">Failed to save settings</p>}
+          {saveMut.isError && (
+            <Alert variant="destructive">
+              <AlertCircle />
+              <AlertDescription>Failed to save settings</AlertDescription>
+            </Alert>
+          )}
         </form>
       </CardContent>
     </Card>

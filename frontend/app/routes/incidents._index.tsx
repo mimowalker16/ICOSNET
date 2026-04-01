@@ -22,6 +22,7 @@ import {
   TableRow,
 } from '~/components/ui/table'
 import { getIncidents } from '~/lib/services/incidents'
+import { Skeleton } from '~/components/ui/skeleton'
 import type { Incident } from '~/types'
 
 function severityVariant(s: string) {
@@ -51,14 +52,14 @@ export default function IncidentsList() {
         <h1 className="text-2xl font-bold">Incidents</h1>
         <Link to="/incidents/new">
           <Button>
-            <Plus className="mr-2 h-4 w-4" /> New Incident
+            <Plus /> New Incident
           </Button>
         </Link>
       </div>
 
       <div className="flex gap-3 flex-wrap">
         <div className="relative flex-1 min-w-[200px]">
-          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+          <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
           <Input placeholder="Search incidents..." value={search} onChange={(e) => setSearch(e.target.value)} className="pl-9" />
         </div>
         <Select value={statusFilter} onValueChange={setStatusFilter}>
@@ -99,9 +100,11 @@ export default function IncidentsList() {
           </TableHeader>
           <TableBody>
             {isLoading ? (
-              <TableRow>
-                <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">Loading...</TableCell>
-              </TableRow>
+              Array.from({ length: 5 }).map((_, i) => (
+                <TableRow key={i}>
+                  <TableCell colSpan={7}><Skeleton className="h-4 w-full" /></TableCell>
+                </TableRow>
+              ))
             ) : incidents.length === 0 ? (
               <TableRow>
                 <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">No incidents found</TableCell>
