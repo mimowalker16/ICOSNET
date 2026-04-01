@@ -28,35 +28,6 @@ A full-stack ITSM (IT Service Management) platform built during an internship at
 - **User management** — admin-only panel to create, edit, activate/deactivate users with role-based access (ADMIN / TECHNICIAN)
 - **Auto-refresh** — all data polling every 30 s via React Query
 
----
-
-## Project Structure
-
-```
-ICOSNET/
-├── backend/          # Django project
-│   ├── config/       # Settings, URLs, Celery config
-│   ├── users/        # Custom user model + JWT auth
-│   ├── monitoring/   # Assets, StatusLogs, probes
-│   ├── incidents/    # Incidents, IncidentLogs, SLA tasks
-│   └── notifications/# Notification settings model + email/Slack/Teams dispatch
-├── frontend/         # React Router v7 app
-│   └── app/
-│       ├── routes/   # File-based routes (dashboard, assets, incidents, analytics, settings)
-│       ├── components/
-│       │   ├── sidebar/  # AppSidebar, NavMain, NavUser
-│       │   └── ui/       # shadcn components
-│       ├── lib/
-│       │   ├── client.ts # Axios instance with JWT interceptors
-│       │   └── services/ # API call functions per domain
-│       ├── store/    # AuthContext + useAuth hook
-│       └── types/    # Shared TypeScript interfaces
-├── docker-compose.yml
-├── start.bat         # One-click launcher (Windows)
-└── .env.example
-```
-
----
 
 ## Getting Started
 
