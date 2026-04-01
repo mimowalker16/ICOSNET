@@ -22,7 +22,10 @@ import {
 } from '~/components/ui/table'
 import { getAssets } from '~/lib/services/assets'
 import { Skeleton } from '~/components/ui/skeleton'
+import { TablePagination } from '~/components/ui/table-pagination'
 import type { Asset } from '~/types'
+
+const PAGE_SIZE = 10
 
 function statusBadge(status?: string) {
   switch (status) {
@@ -36,6 +39,7 @@ function statusBadge(status?: string) {
 export default function AssetsList() {
   const [search, setSearch] = useState('')
   const [typeFilter, setTypeFilter] = useState('ALL')
+  const [page, setPage] = useState(1)
 
   const { data: assets = [], isLoading } = useQuery<Asset[]>({
     queryKey: ['assets', search, typeFilter],
@@ -46,6 +50,9 @@ export default function AssetsList() {
       return getAssets(params)
     },
   })
+
+  const totalPages = Math.ceil(assets.length / PAGE_SIZE)
+  const paginatedAssets = assets.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE)
 
   return (
     <div className="space-y-6">
@@ -64,11 +71,11 @@ export default function AssetsList() {
           <Input
             placeholder="Search assets..."
             value={search}
-            onChange={(e) => setSearch(e.target.value)}
+            onChange={(e) => { setSearch(e.target.value); setPage(1) }}
             className="pl-9"
           />
         </div>
-        <Select value={typeFilter} onValueChange={setTypeFilter}>
+        <Select value={typeFilter} onValueChange={(v) => { setTypeFilter(v); setPage(1) }}>
           <SelectTrigger className="w-40">
             <SelectValue />
           </SelectTrigger>
@@ -107,7 +114,7 @@ export default function AssetsList() {
                 </TableCell>
               </TableRow>
             ) : (
-              assets.map((asset) => (
+              paginatedAssets.map((asset) => (
                 <TableRow key={asset.id}>
                   <TableCell>
                     <Link to={`/assets/${asset.id}`} className="font-medium hover:underline text-primary">
@@ -129,6 +136,7 @@ export default function AssetsList() {
           </TableBody>
         </Table>
       </div>
+      <TablePagination page={page} totalPages={totalPages} onPageChange={setPage} />
     </div>
   )
 }

@@ -29,6 +29,7 @@ import { getAsset, getStatusHistory, updateAsset, deleteAsset } from '~/lib/serv
 import { getIncidents } from '~/lib/services/incidents'
 import { Input } from '~/components/ui/input'
 import { Label } from '~/components/ui/label'
+import { TablePagination } from '~/components/ui/table-pagination'
 import {
   Dialog,
   DialogContent,
@@ -66,6 +67,8 @@ export default function AssetDetail() {
   const queryClient = useQueryClient()
   const [editOpen, setEditOpen] = useState(false)
   const [deleteOpen, setDeleteOpen] = useState(false)
+  const [incPage, setIncPage] = useState(1)
+  const INC_PAGE_SIZE = 5
 
   const { data: asset } = useQuery<Asset>({
     queryKey: ['asset', assetId],
@@ -98,6 +101,9 @@ export default function AssetDetail() {
       navigate('/assets')
     },
   })
+
+  const incTotalPages = Math.ceil(incidents.length / INC_PAGE_SIZE)
+  const paginatedIncidents = incidents.slice((incPage - 1) * INC_PAGE_SIZE, incPage * INC_PAGE_SIZE)
 
   const chartData = history
     .slice()
@@ -303,7 +309,7 @@ export default function AssetDetail() {
                   <TableCell colSpan={4} className="text-center text-muted-foreground">No incidents</TableCell>
                 </TableRow>
               ) : (
-                incidents.map((inc) => (
+                paginatedIncidents.map((inc) => (
                   <TableRow key={inc.id}>
                     <TableCell>
                       <Link to={`/incidents/${inc.id}`} className="font-medium hover:underline text-primary">{inc.title}</Link>
@@ -316,6 +322,7 @@ export default function AssetDetail() {
               )}
             </TableBody>
           </Table>
+          <TablePagination page={incPage} totalPages={incTotalPages} onPageChange={setIncPage} />
         </CardContent>
       </Card>
     </div>

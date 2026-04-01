@@ -8,6 +8,7 @@ import { Label } from '~/components/ui/label'
 import { Badge } from '~/components/ui/badge'
 import { Separator } from '~/components/ui/separator'
 import { Alert, AlertDescription } from '~/components/ui/alert'
+import { TablePagination } from '~/components/ui/table-pagination'
 import {
   Dialog,
   DialogContent,
@@ -61,11 +62,16 @@ function UsersSection() {
   const [open, setOpen] = useState(false)
   const [error, setError] = useState('')
   const [editUser, setEditUser] = useState<User | null>(null)
+  const [page, setPage] = useState(1)
+  const PAGE_SIZE = 10
 
   const { data: users = [] } = useQuery<User[]>({
     queryKey: ['users'],
     queryFn: getUsers,
   })
+
+  const totalPages = Math.ceil(users.length / PAGE_SIZE)
+  const paginatedUsers = users.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE)
 
   const createMut = useMutation({
     mutationFn: createUser,
@@ -174,7 +180,7 @@ function UsersSection() {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {users.map((user) => (
+            {paginatedUsers.map((user) => (
               <TableRow key={user.id}>
                 <TableCell className="font-medium">{user.username}</TableCell>
                 <TableCell className="text-sm text-muted-foreground">{user.email}</TableCell>
@@ -206,6 +212,7 @@ function UsersSection() {
             ))}
           </TableBody>
         </Table>
+        <TablePagination page={page} totalPages={totalPages} onPageChange={setPage} />
       </CardContent>
 
       {/* Edit User Dialog */}

@@ -1,4 +1,5 @@
 import { useQuery } from '@tanstack/react-query'
+import { useState } from 'react'
 import {
   BarChart,
   Bar,
@@ -22,6 +23,9 @@ import {
   TableRow,
 } from '~/components/ui/table'
 import { getMTTR, getTopFailing, getUptime, getIncidentsBySeverity } from '~/lib/services/analytics'
+import { TablePagination } from '~/components/ui/table-pagination'
+
+const UPTIME_PAGE_SIZE = 8
 
 const SEVERITY_COLORS: Record<string, string> = {
   CRITICAL: '#dc2626',
@@ -31,10 +35,14 @@ const SEVERITY_COLORS: Record<string, string> = {
 }
 
 export default function Analytics() {
+  const [uptimePage, setUptimePage] = useState(1)
   const { data: mttr } = useQuery({ queryKey: ['analytics-mttr'], queryFn: getMTTR })
   const { data: topFailing = [] } = useQuery({ queryKey: ['analytics-top-failing'], queryFn: getTopFailing })
   const { data: uptime = [] } = useQuery({ queryKey: ['analytics-uptime'], queryFn: getUptime })
   const { data: severity = [] } = useQuery({ queryKey: ['analytics-severity'], queryFn: getIncidentsBySeverity })
+
+  const uptimeTotalPages = Math.ceil(uptime.length / UPTIME_PAGE_SIZE)
+  const paginatedUptime = uptime.slice((uptimePage - 1) * UPTIME_PAGE_SIZE, uptimePage * UPTIME_PAGE_SIZE)
 
   return (
     <div className="space-y-6">
@@ -124,7 +132,7 @@ export default function Analytics() {
                     <TableCell colSpan={2} className="text-center text-muted-foreground">No data yet</TableCell>
                   </TableRow>
                 ) : (
-                  uptime.map((entry) => (
+                  paginatedUptime.map((entry) => (
                     <TableRow key={entry.asset_id}>
                       <TableCell className="font-medium">{entry.asset_name}</TableCell>
                       <TableCell className="text-right">
@@ -137,6 +145,7 @@ export default function Analytics() {
                 )}
               </TableBody>
             </Table>
+            <TablePagination page={uptimePage} totalPages={uptimeTotalPages} onPageChange={setUptimePage} />
           </CardContent>
         </Card>
       </div>

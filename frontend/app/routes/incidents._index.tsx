@@ -23,7 +23,10 @@ import {
 } from '~/components/ui/table'
 import { getIncidents } from '~/lib/services/incidents'
 import { Skeleton } from '~/components/ui/skeleton'
+import { TablePagination } from '~/components/ui/table-pagination'
 import type { Incident } from '~/types'
+
+const PAGE_SIZE = 10
 
 function severityVariant(s: string) {
   return s === 'CRITICAL' || s === 'HIGH' ? ('destructive' as const) : ('secondary' as const)
@@ -33,6 +36,7 @@ export default function IncidentsList() {
   const [search, setSearch] = useState('')
   const [statusFilter, setStatusFilter] = useState('ALL')
   const [severityFilter, setSeverityFilter] = useState('ALL')
+  const [page, setPage] = useState(1)
 
   const { data: incidents = [], isLoading } = useQuery<Incident[]>({
     queryKey: ['incidents', search, statusFilter, severityFilter],
@@ -46,6 +50,9 @@ export default function IncidentsList() {
     refetchInterval: 30_000,
   })
 
+  const totalPages = Math.ceil(incidents.length / PAGE_SIZE)
+  const paginatedIncidents = incidents.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE)
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -58,11 +65,11 @@ export default function IncidentsList() {
       </div>
 
       <div className="flex gap-3 flex-wrap">
-        <div className="relative flex-1 min-w-[200px]">
+        <div className="relative flex-1 min-w-50">
           <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-          <Input placeholder="Search incidents..." value={search} onChange={(e) => setSearch(e.target.value)} className="pl-9" />
+          <Input placeholder="Search incidents..." value={search} onChange={(e) => { setSearch(e.target.value); setPage(1) }} className="pl-9" />
         </div>
-        <Select value={statusFilter} onValueChange={setStatusFilter}>
+        <Select value={statusFilter} onValueChange={(v) => { setStatusFilter(v); setPage(1) }}>
           <SelectTrigger className="w-40"><SelectValue /></SelectTrigger>
           <SelectContent>
             <SelectItem value="ALL">All Status</SelectItem>
@@ -73,7 +80,7 @@ export default function IncidentsList() {
             <SelectItem value="CLOSED">Closed</SelectItem>
           </SelectContent>
         </Select>
-        <Select value={severityFilter} onValueChange={setSeverityFilter}>
+        <Select value={severityFilter} onValueChange={(v) => { setSeverityFilter(v); setPage(1) }}>
           <SelectTrigger className="w-40"><SelectValue /></SelectTrigger>
           <SelectContent>
             <SelectItem value="ALL">All Severity</SelectItem>
@@ -110,7 +117,7 @@ export default function IncidentsList() {
                 <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">No incidents found</TableCell>
               </TableRow>
             ) : (
-              incidents.map((inc) => (
+              paginatedIncidents.map((inc) => (
                 <TableRow key={inc.id}>
                   <TableCell>
                     <Link to={`/incidents/${inc.id}`} className="font-medium hover:underline text-primary">{inc.title}</Link>
@@ -133,6 +140,7 @@ export default function IncidentsList() {
           </TableBody>
         </Table>
       </div>
+      <TablePagination page={page} totalPages={totalPages} onPageChange={setPage} />
     </div>
   )
 }
