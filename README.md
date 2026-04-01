@@ -28,7 +28,7 @@ A full-stack ITSM (IT Service Management) platform built during an internship at
 - **User management** — admin-only panel to create, edit, activate/deactivate users with role-based access (ADMIN / TECHNICIAN)
 - **Auto-refresh** — all data polling every 30 s via React Query
 
-
+---
 ## Getting Started
 
 ### Prerequisites
