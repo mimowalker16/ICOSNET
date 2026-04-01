@@ -264,7 +264,7 @@ export default function AssetDetail() {
       </Card>
 
       <Card>
-        <CardHeader><CardTitle>Linked Incidents</CardTitle></CardHeader>
+        <CardHeader><CardTitle>Incident history</CardTitle></CardHeader>
         <CardContent>
           <Table>
             <TableHeader>

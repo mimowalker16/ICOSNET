@@ -4,6 +4,9 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { Button } from '~/components/ui/button'
 import { Input } from '~/components/ui/input'
 import { Label } from '~/components/ui/label'
+import { Textarea } from '~/components/ui/textarea'
+import { Alert, AlertDescription } from '~/components/ui/alert'
+import { AlertCircle } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '~/components/ui/card'
 import {
   Select,
@@ -61,11 +64,10 @@ export default function IncidentNew() {
 
             <div className="grid gap-2">
               <Label htmlFor="description">Description</Label>
-              <textarea
+              <Textarea
                 id="description"
                 name="description"
                 rows={4}
-                className="flex w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm outline-none placeholder:text-muted-foreground focus:ring-2 focus:ring-ring"
                 placeholder="Detailed description of the incident..."
               />
             </div>
@@ -96,7 +98,12 @@ export default function IncidentNew() {
               </div>
             </div>
 
-            {error && <p className="text-sm text-red-500">{error}</p>}
+            {error && (
+              <Alert variant="destructive">
+                <AlertCircle />
+                <AlertDescription>{error}</AlertDescription>
+              </Alert>
+            )}
 
             <div className="flex gap-3">
               <Button type="submit" disabled={mutation.isPending}>
