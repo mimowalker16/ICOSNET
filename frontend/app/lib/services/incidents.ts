@@ -1,5 +1,5 @@
 import client from '~/lib/client'
-import type { Incident, IncidentLog } from '~/types'
+import type { Incident, IncidentLog, StatusRoleMapping, EligibleAssignee } from '~/types'
 
 export async function getIncidents(params?: Record<string, string>) {
   const { data } = await client.get<{ count: number; results: Incident[] } | Incident[]>('incidents/', { params })
@@ -28,8 +28,12 @@ export async function updateIncident(id: number, payload: Partial<Incident>) {
   return data
 }
 
-export async function transitionIncident(id: number, status: string, comment?: string) {
-  const { data } = await client.post<Incident>(`incidents/${id}/transition/`, { new_status: status, comment })
+export async function transitionIncident(id: number, status: string, comment?: string, assigned_to?: number) {
+  const { data } = await client.post<Incident>(`incidents/${id}/transition/`, {
+    new_status: status,
+    comment,
+    ...(assigned_to !== undefined ? { assigned_to } : {}),
+  })
   return data
 }
 
@@ -40,5 +44,24 @@ export async function getIncidentLogs(id: number) {
 
 export async function addIncidentComment(id: number, comment: string) {
   const { data } = await client.post<IncidentLog>(`incidents/${id}/logs/`, { comment })
+  return data
+}
+
+export async function getStatusRoleMappings() {
+  const { data } = await client.get<StatusRoleMapping[]>('incidents/status-role-mappings/')
+  return data
+}
+
+export async function createStatusRoleMapping(payload: { status: string; role: number }) {
+  const { data } = await client.post<StatusRoleMapping>('incidents/status-role-mappings/', payload)
+  return data
+}
+
+export async function deleteStatusRoleMapping(id: number) {
+  await client.delete(`incidents/status-role-mappings/${id}/`)
+}
+
+export async function getEligibleAssignees(status: string) {
+  const { data } = await client.get<EligibleAssignee[]>('incidents/eligible-assignees/', { params: { status } })
   return data
 }

@@ -161,3 +161,15 @@ class IncidentLog(models.Model):
 
     def __str__(self):
         return f"Incident #{self.incident_id} — {self.action_type} at {self.created_at}"
+
+
+class StatusRoleMapping(models.Model):
+    status = models.CharField(max_length=15, choices=Incident.Status.choices, unique=True)
+    role = models.ForeignKey('users.Role', on_delete=models.CASCADE, related_name='status_mappings')
+
+    class Meta:
+        db_table = 'status_role_mappings'
+        ordering = ['status']
+
+    def __str__(self):
+        return f"{self.status} → {self.role.name}"

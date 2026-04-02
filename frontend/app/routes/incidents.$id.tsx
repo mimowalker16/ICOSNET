@@ -25,9 +25,9 @@ import {
   DialogHeader,
   DialogTitle,
 } from '~/components/ui/dialog'
-import { getIncident, transitionIncident, updateIncident, addIncidentComment } from '~/lib/services/incidents'
+import { getIncident, transitionIncident, updateIncident, addIncidentComment, getStatusRoleMappings, getEligibleAssignees } from '~/lib/services/incidents'
 import { getUsers } from '~/lib/services/users'
-import type { Incident, IncidentLog, User } from '~/types'
+import type { Incident, IncidentLog, User, StatusRoleMapping, EligibleAssignee } from '~/types'
 import { RequirePermission } from '~/components/RequirePermission'
 
 const VALID_TRANSITIONS: Record<string, string[]> = {
@@ -61,12 +61,22 @@ export default function IncidentDetail() {
     queryFn: getUsers,
   })
 
+  const { data: mappings = [] } = useQuery<StatusRoleMapping[]>({
+    queryKey: ['status-role-mappings'],
+    queryFn: getStatusRoleMappings,
+  })
+
+  // Map status → mapping for quick lookup
+  const mappingByStatus = Object.fromEntries(mappings.map((m) => [m.status, m]))
+
   const transitionMut = useMutation({
     mutationFn: async ({ status, assignTo }: { status: string; assignTo?: string }) => {
-      if (status === 'ASSIGNED' && assignTo) {
-        await updateIncident(incidentId, { assigned_to: Number(assignTo) })
-      }
-      return transitionIncident(incidentId, status)
+      return transitionIncident(
+        incidentId,
+        status,
+        undefined,
+        assignTo ? Number(assignTo) : undefined,
+      )
     },
     onSuccess: (updated) => {
       setTransitionError('')
@@ -116,11 +126,13 @@ export default function IncidentDetail() {
   )
 
   const allowed = VALID_TRANSITIONS[incident.status] ?? []
+  // Check which allowed transitions have a mapping requiring assignment
+  const statusesNeedingAssignee = allowed.filter((s) => s in mappingByStatus)
 
   function handleTransition(newStatus: string) {
     transitionMut.mutate({
       status: newStatus,
-      assignTo: newStatus === 'ASSIGNED' ? assignTo : undefined,
+      assignTo: (newStatus in mappingByStatus) ? assignTo : undefined,
     })
   }
 
@@ -231,13 +243,22 @@ export default function IncidentDetail() {
                 <AlertDescription>{transitionError}</AlertDescription>
               </Alert>
             )}
-            {allowed.includes('ASSIGNED') && (
+            {statusesNeedingAssignee.length > 0 && (
               <Select value={assignTo} onValueChange={setAssignTo}>
                 <SelectTrigger className="w-48"><SelectValue placeholder="Assign to..." /></SelectTrigger>
                 <SelectContent>
-                  {users.map((u) => (
-                    <SelectItem key={u.id} value={String(u.id)}>{u.username}</SelectItem>
-                  ))}
+                  {users
+                    .filter((u) => {
+                      // If only one mapped status, filter to that role; otherwise show all eligible
+                      if (statusesNeedingAssignee.length === 1) {
+                        const mapping = mappingByStatus[statusesNeedingAssignee[0]]
+                        return mapping ? u.role.id === mapping.role : true
+                      }
+                      return true
+                    })
+                    .map((u) => (
+                      <SelectItem key={u.id} value={String(u.id)}>{u.username}</SelectItem>
+                    ))}
                 </SelectContent>
               </Select>
             )}

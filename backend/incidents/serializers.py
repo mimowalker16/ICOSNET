@@ -1,7 +1,7 @@
 from django.utils import timezone
 from rest_framework import serializers
 
-from .models import Incident, IncidentLog
+from .models import Incident, IncidentLog, StatusRoleMapping
 
 
 class IncidentLogSerializer(serializers.ModelSerializer):
@@ -81,7 +81,23 @@ class IncidentUpdateSerializer(serializers.ModelSerializer):
 class TransitionSerializer(serializers.Serializer):
     new_status = serializers.ChoiceField(choices=Incident.Status.choices)
     comment = serializers.CharField(required=False, allow_blank=True, default='')
+    assigned_to = serializers.IntegerField(required=False, allow_null=True)
 
 
 class CommentSerializer(serializers.Serializer):
     comment = serializers.CharField()
+
+
+class StatusRoleMappingSerializer(serializers.ModelSerializer):
+    role_name = serializers.CharField(source='role.name', read_only=True)
+
+    class Meta:
+        model = StatusRoleMapping
+        fields = ('id', 'status', 'role', 'role_name')
+        read_only_fields = ('id', 'role_name')
+
+
+class StatusRoleMappingWriteSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = StatusRoleMapping
+        fields = ('status', 'role')

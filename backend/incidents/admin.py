@@ -1,6 +1,6 @@
 from django.contrib import admin
 
-from .models import Incident, IncidentLog, SLAPolicy
+from .models import Incident, IncidentLog, SLAPolicy, StatusRoleMapping
 
 
 @admin.register(SLAPolicy)
@@ -21,3 +21,9 @@ class IncidentLogAdmin(admin.ModelAdmin):
     list_display = ('incident', 'actor', 'action_type', 'old_value', 'new_value', 'created_at')
     list_filter = ('action_type',)
     readonly_fields = ('created_at',)
+
+
+@admin.register(StatusRoleMapping)
+class StatusRoleMappingAdmin(admin.ModelAdmin):
+    list_display = ('status', 'role')
+    list_filter = ('status',)
