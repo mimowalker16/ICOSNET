@@ -1,11 +1,13 @@
 import { createContext, useContext, useState, useEffect, useCallback, type ReactNode } from 'react'
 import { useNavigate } from 'react-router'
-import type { User } from '~/types'
+import type { MeUser } from '~/types'
 import * as authLib from '~/lib/auth'
 
 interface AuthContextType {
-  user: User | null
+  user: MeUser | null
   isAdmin: boolean
+  permissions: string[]
+  hasPermission: (codename: string) => boolean
   loading: boolean
   login: (username: string, password: string) => Promise<void>
   logout: () => void
@@ -14,9 +16,17 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | null>(null)
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [user, setUser] = useState<User | null>(null)
+  const [user, setUser] = useState<MeUser | null>(null)
   const [loading, setLoading] = useState(true)
   const navigate = useNavigate()
+
+  const permissions = user?.permissions ?? []
+  const isAdmin = user?.role?.is_admin ?? false
+
+  const hasPermission = useCallback(
+    (codename: string) => isAdmin || permissions.includes(codename),
+    [isAdmin, permissions],
+  )
 
   useEffect(() => {
     const token = authLib.getStoredToken()
@@ -43,7 +53,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [navigate])
 
   return (
-    <AuthContext.Provider value={{ user, isAdmin: user?.role === 'ADMIN', loading, login, logout }}>
+    <AuthContext.Provider value={{ user, isAdmin, permissions, hasPermission, loading, login, logout }}>
       {children}
     </AuthContext.Provider>
   )

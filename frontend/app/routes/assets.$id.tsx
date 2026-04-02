@@ -50,6 +50,7 @@ import {
   SelectValue,
 } from '~/components/ui/select'
 import type { Asset, StatusLog, Incident } from '~/types'
+import { RequirePermission } from '~/components/RequirePermission'
 
 function statusColor(status?: string) {
   switch (status) {
@@ -142,6 +143,7 @@ export default function AssetDetail() {
   }
 
   return (
+    <RequirePermission permission="view_assets">
     <div className="space-y-6">
       <div className="flex items-center gap-4">
         <Link to="/assets">
@@ -326,5 +328,6 @@ export default function AssetDetail() {
         </CardContent>
       </Card>
     </div>
+    </RequirePermission>
   )
 }

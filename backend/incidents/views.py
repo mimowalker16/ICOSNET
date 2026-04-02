@@ -1,8 +1,10 @@
 from django.shortcuts import get_object_or_404
 from rest_framework import generics, status
-from rest_framework.permissions import IsAuthenticated
+from rest_framework.permissions import SAFE_METHODS
 from rest_framework.response import Response
 from rest_framework.views import APIView
+
+from users.permissions import require_perm
 
 from .models import Incident, IncidentLog
 from .serializers import (
@@ -17,10 +19,14 @@ from .serializers import (
 
 
 class IncidentListCreateView(generics.ListCreateAPIView):
-    permission_classes = [IsAuthenticated]
     filterset_fields = ['status', 'severity', 'assigned_to', 'asset', 'source']
     search_fields = ['title', 'description']
     ordering_fields = ['created_at', 'updated_at', 'severity', 'sla_deadline']
+
+    def get_permissions(self):
+        if self.request.method in SAFE_METHODS:
+            return [require_perm('view_incidents')()]
+        return [require_perm('create_incident')()]
 
     def get_queryset(self):
         return Incident.objects.select_related('asset', 'created_by', 'assigned_to').all()
@@ -35,7 +41,11 @@ class IncidentDetailView(generics.RetrieveUpdateAPIView):
     queryset = Incident.objects.select_related(
         'asset', 'created_by', 'assigned_to',
     ).prefetch_related('logs__actor')
-    permission_classes = [IsAuthenticated]
+
+    def get_permissions(self):
+        if self.request.method in SAFE_METHODS:
+            return [require_perm('view_incidents')()]
+        return [require_perm('transition_incident')()]
 
     def get_serializer_class(self):
         if self.request.method in ('PUT', 'PATCH'):
@@ -44,7 +54,7 @@ class IncidentDetailView(generics.RetrieveUpdateAPIView):
 
 
 class IncidentTransitionView(APIView):
-    permission_classes = [IsAuthenticated]
+    permission_classes = [require_perm('transition_incident')]
 
     def post(self, request, pk):
         incident = get_object_or_404(Incident, pk=pk)
@@ -62,7 +72,11 @@ class IncidentTransitionView(APIView):
 
 
 class IncidentLogsView(APIView):
-    permission_classes = [IsAuthenticated]
+
+    def get_permissions(self):
+        if self.request.method in SAFE_METHODS:
+            return [require_perm('view_incidents')()]
+        return [require_perm('comment_incident')()]
 
     def get(self, request, pk):
         logs = IncidentLog.objects.filter(incident_id=pk).select_related('actor')

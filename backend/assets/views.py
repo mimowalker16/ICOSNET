@@ -1,7 +1,7 @@
 from rest_framework import generics
-from rest_framework.permissions import IsAuthenticated
+from rest_framework.permissions import SAFE_METHODS
 
-from users.permissions import IsAdminOrReadOnly
+from users.permissions import require_perm
 
 from .models import Asset, AssetStatusLog
 from .serializers import AssetSerializer, AssetStatusLogSerializer
@@ -10,21 +10,31 @@ from .serializers import AssetSerializer, AssetStatusLogSerializer
 class AssetListCreateView(generics.ListCreateAPIView):
     queryset = Asset.objects.select_related('created_by').prefetch_related('status_logs')
     serializer_class = AssetSerializer
-    permission_classes = [IsAdminOrReadOnly]
     filterset_fields = ['asset_type', 'check_type', 'is_active']
     search_fields = ['name', 'ip_address_or_url', 'description']
     ordering_fields = ['name', 'created_at', 'asset_type']
+
+    def get_permissions(self):
+        if self.request.method in SAFE_METHODS:
+            return [require_perm('view_assets')()]
+        return [require_perm('create_asset')()]
 
 
 class AssetDetailView(generics.RetrieveUpdateDestroyAPIView):
     queryset = Asset.objects.select_related('created_by').prefetch_related('status_logs')
     serializer_class = AssetSerializer
-    permission_classes = [IsAdminOrReadOnly]
+
+    def get_permissions(self):
+        if self.request.method in SAFE_METHODS:
+            return [require_perm('view_assets')()]
+        if self.request.method == 'DELETE':
+            return [require_perm('delete_asset')()]
+        return [require_perm('edit_asset')()]
 
 
 class AssetStatusHistoryView(generics.ListAPIView):
     serializer_class = AssetStatusLogSerializer
-    permission_classes = [IsAuthenticated]
+    permission_classes = [require_perm('view_assets')]
     filterset_fields = ['status']
     ordering_fields = ['checked_at']
 

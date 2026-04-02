@@ -1,6 +1,6 @@
 import { useState, type FormEvent } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { Plus, Pencil, AlertCircle } from 'lucide-react'
+import { Plus, Pencil, AlertCircle, Trash2 } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '~/components/ui/card'
 import { Button } from '~/components/ui/button'
 import { Input } from '~/components/ui/input'
@@ -8,6 +8,7 @@ import { Label } from '~/components/ui/label'
 import { Badge } from '~/components/ui/badge'
 import { Separator } from '~/components/ui/separator'
 import { Alert, AlertDescription } from '~/components/ui/alert'
+import { Checkbox } from '~/components/ui/checkbox'
 import { TablePagination } from '~/components/ui/table-pagination'
 import {
   Dialog,
@@ -32,28 +33,262 @@ import {
   TableRow,
 } from '~/components/ui/table'
 import { useAuth } from '~/store/AuthContext'
+import { AccessDenied } from '~/components/AccessDenied'
 import { getUsers, createUser, updateUser } from '~/lib/services/users'
 import { getNotificationSettings, updateNotificationSettings } from '~/lib/services/notifications'
-import type { User } from '~/types'
+import { getRoles, getPermissions, createRole, updateRole, deleteRole } from '~/lib/services/roles'
+import type { User, Role, AppPermission } from '~/types'
 
 export default function SettingsPage() {
-  const { isAdmin } = useAuth()
+  const { hasPermission } = useAuth()
 
-  if (!isAdmin) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <p className="text-muted-foreground text-lg">Admin access required</p>
-      </div>
-    )
+  if (!hasPermission('manage_users')) {
+    return <AccessDenied />
   }
 
   return (
     <div className="space-y-8">
       <h1 className="text-2xl font-bold">Settings</h1>
+      <RolesSection />
+      <Separator />
       <UsersSection />
       <Separator />
       <NotificationsSection />
     </div>
+  )
+}
+
+function RolesSection() {
+  const queryClient = useQueryClient()
+  const [open, setOpen] = useState(false)
+  const [editRole, setEditRole] = useState<Role | null>(null)
+  const [error, setError] = useState('')
+  const [selectedPerms, setSelectedPerms] = useState<number[]>([])
+  const [page, setPage] = useState(1)
+  const PAGE_SIZE = 10
+
+  const { data: roles = [] } = useQuery<Role[]>({
+    queryKey: ['roles'],
+    queryFn: getRoles,
+  })
+
+  const { data: permissions = [] } = useQuery<AppPermission[]>({
+    queryKey: ['permissions'],
+    queryFn: getPermissions,
+  })
+
+  const totalPages = Math.ceil(roles.length / PAGE_SIZE)
+  const paginatedRoles = roles.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE)
+
+  const createMut = useMutation({
+    mutationFn: createRole,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['roles'] })
+      setOpen(false)
+      setError('')
+      setSelectedPerms([])
+    },
+    onError: () => setError('Failed to create role'),
+  })
+
+  const editMut = useMutation({
+    mutationFn: ({ id, payload }: { id: number; payload: Parameters<typeof updateRole>[1] }) =>
+      updateRole(id, payload),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['roles'] })
+      queryClient.invalidateQueries({ queryKey: ['users'] })
+      setEditRole(null)
+      setSelectedPerms([])
+    },
+  })
+
+  const deleteMut = useMutation({
+    mutationFn: deleteRole,
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['roles'] }),
+  })
+
+  function handleCreate(e: FormEvent<HTMLFormElement>) {
+    e.preventDefault()
+    setError('')
+    const fd = new FormData(e.currentTarget)
+    createMut.mutate({
+      name: fd.get('name') as string,
+      description: fd.get('description') as string,
+      permission_ids: selectedPerms,
+    })
+  }
+
+  function openEditDialog(role: Role) {
+    setEditRole(role)
+    setSelectedPerms(role.permissions.map((p) => p.id))
+  }
+
+  function togglePerm(id: number) {
+    setSelectedPerms((prev) =>
+      prev.includes(id) ? prev.filter((p) => p !== id) : [...prev, id],
+    )
+  }
+
+  return (
+    <Card>
+      <CardHeader className="flex flex-row items-center justify-between">
+        <CardTitle>Roles</CardTitle>
+        <Dialog open={open} onOpenChange={(o) => { setOpen(o); if (!o) { setSelectedPerms([]); setError('') } }}>
+          <DialogTrigger asChild>
+            <Button size="sm"><Plus /> Add Role</Button>
+          </DialogTrigger>
+          <DialogContent>
+            <DialogHeader><DialogTitle>Create Role</DialogTitle></DialogHeader>
+            <form onSubmit={handleCreate} className="space-y-4">
+              <div className="grid gap-2">
+                <Label htmlFor="role_name">Name</Label>
+                <Input id="role_name" name="name" required />
+              </div>
+              <div className="grid gap-2">
+                <Label htmlFor="role_description">Description</Label>
+                <Input id="role_description" name="description" />
+              </div>
+              <div className="grid gap-2">
+                <Label>Permissions</Label>
+                <div className="grid grid-cols-2 gap-2 max-h-48 overflow-y-auto rounded border p-3">
+                  {permissions.map((perm) => (
+                    <div key={perm.id} className="flex items-center gap-2">
+                      <Checkbox
+                        id={`perm-${perm.id}`}
+                        checked={selectedPerms.includes(perm.id)}
+                        onCheckedChange={() => togglePerm(perm.id)}
+                      />
+                      <Label htmlFor={`perm-${perm.id}`} className="text-sm font-normal cursor-pointer">
+                        {perm.name}
+                      </Label>
+                    </div>
+                  ))}
+                </div>
+              </div>
+              {error && (
+                <Alert variant="destructive">
+                  <AlertCircle />
+                  <AlertDescription>{error}</AlertDescription>
+                </Alert>
+              )}
+              <Button type="submit" className="w-full" disabled={createMut.isPending}>
+                {createMut.isPending ? 'Creating...' : 'Create Role'}
+              </Button>
+            </form>
+          </DialogContent>
+        </Dialog>
+      </CardHeader>
+      <CardContent>
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Name</TableHead>
+              <TableHead>Description</TableHead>
+              <TableHead>Permissions</TableHead>
+              <TableHead>Actions</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {paginatedRoles.map((role) => (
+              <TableRow key={role.id}>
+                <TableCell className="font-medium">
+                  {role.name}
+                  {role.is_admin && <Badge className="ml-2 bg-amber-600">Admin</Badge>}
+                  {role.is_system && <Badge variant="outline" className="ml-2">System</Badge>}
+                </TableCell>
+                <TableCell className="text-sm text-muted-foreground">{role.description}</TableCell>
+                <TableCell>
+                  <div className="flex flex-wrap gap-1">
+                    {role.is_admin ? (
+                      <Badge variant="secondary">All permissions</Badge>
+                    ) : (
+                      role.permissions.map((p) => (
+                        <Badge key={p.id} variant="secondary" className="text-xs">{p.name}</Badge>
+                      ))
+                    )}
+                  </div>
+                </TableCell>
+                <TableCell>
+                  <div className="flex items-center gap-2">
+                    <Button size="sm" variant="ghost" onClick={() => openEditDialog(role)} disabled={role.is_system}>
+                      <Pencil />
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      onClick={() => deleteMut.mutate(role.id)}
+                      disabled={role.is_system || deleteMut.isPending}
+                    >
+                      <Trash2 />
+                    </Button>
+                  </div>
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+        <TablePagination page={page} totalPages={totalPages} onPageChange={setPage} />
+      </CardContent>
+
+      {/* Edit Role Dialog */}
+      <Dialog open={!!editRole} onOpenChange={(o) => { if (!o) { setEditRole(null); setSelectedPerms([]) } }}>
+        <DialogContent>
+          <DialogHeader><DialogTitle>Edit Role</DialogTitle></DialogHeader>
+          {editRole && (
+            <form
+              onSubmit={(e) => {
+                e.preventDefault()
+                const fd = new FormData(e.currentTarget)
+                editMut.mutate({
+                  id: editRole.id,
+                  payload: {
+                    name: fd.get('name') as string,
+                    description: fd.get('description') as string,
+                    permission_ids: selectedPerms,
+                  },
+                })
+              }}
+              className="space-y-4"
+            >
+              <div className="grid gap-2">
+                <Label htmlFor="edit_role_name">Name</Label>
+                <Input id="edit_role_name" name="name" required defaultValue={editRole.name} />
+              </div>
+              <div className="grid gap-2">
+                <Label htmlFor="edit_role_description">Description</Label>
+                <Input id="edit_role_description" name="description" defaultValue={editRole.description} />
+              </div>
+              <div className="grid gap-2">
+                <Label>Permissions</Label>
+                <div className="grid grid-cols-2 gap-2 max-h-48 overflow-y-auto rounded border p-3">
+                  {permissions.map((perm) => (
+                    <div key={perm.id} className="flex items-center gap-2">
+                      <Checkbox
+                        id={`edit-perm-${perm.id}`}
+                        checked={selectedPerms.includes(perm.id)}
+                        onCheckedChange={() => togglePerm(perm.id)}
+                      />
+                      <Label htmlFor={`edit-perm-${perm.id}`} className="text-sm font-normal cursor-pointer">
+                        {perm.name}
+                      </Label>
+                    </div>
+                  ))}
+                </div>
+              </div>
+              {editMut.isError && (
+                <Alert variant="destructive">
+                  <AlertCircle />
+                  <AlertDescription>Failed to save changes</AlertDescription>
+                </Alert>
+              )}
+              <Button type="submit" className="w-full" disabled={editMut.isPending}>
+                {editMut.isPending ? 'Saving...' : 'Save Changes'}
+              </Button>
+            </form>
+          )}
+        </DialogContent>
+      </Dialog>
+    </Card>
   )
 }
 
@@ -63,11 +298,18 @@ function UsersSection() {
   const [error, setError] = useState('')
   const [editUser, setEditUser] = useState<User | null>(null)
   const [page, setPage] = useState(1)
+  const [selectedRole, setSelectedRole] = useState<string>('')
+  const [editSelectedRole, setEditSelectedRole] = useState<string>('')
   const PAGE_SIZE = 10
 
   const { data: users = [] } = useQuery<User[]>({
     queryKey: ['users'],
     queryFn: getUsers,
+  })
+
+  const { data: roles = [] } = useQuery<Role[]>({
+    queryKey: ['roles'],
+    queryFn: getRoles,
   })
 
   const totalPages = Math.ceil(users.length / PAGE_SIZE)
@@ -79,6 +321,7 @@ function UsersSection() {
       queryClient.invalidateQueries({ queryKey: ['users'] })
       setOpen(false)
       setError('')
+      setSelectedRole('')
     },
     onError: () => setError('Failed to create user'),
   })
@@ -90,11 +333,12 @@ function UsersSection() {
   })
 
   const editMut = useMutation({
-    mutationFn: ({ id, payload }: { id: number; payload: Partial<User> }) =>
+    mutationFn: ({ id, payload }: { id: number; payload: Record<string, unknown> }) =>
       updateUser(id, payload),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['users'] })
       setEditUser(null)
+      setEditSelectedRole('')
     },
   })
 
@@ -106,17 +350,22 @@ function UsersSection() {
       username: fd.get('username') as string,
       email: fd.get('email') as string,
       password: fd.get('password') as string,
-      role: fd.get('role') as string,
+      role: Number(selectedRole),
       first_name: fd.get('first_name') as string,
       last_name: fd.get('last_name') as string,
     })
+  }
+
+  function openEdit(user: User) {
+    setEditUser(user)
+    setEditSelectedRole(String(user.role.id))
   }
 
   return (
     <Card>
       <CardHeader className="flex flex-row items-center justify-between">
         <CardTitle>Users</CardTitle>
-        <Dialog open={open} onOpenChange={setOpen}>
+        <Dialog open={open} onOpenChange={(o) => { setOpen(o); if (!o) { setSelectedRole(''); setError('') } }}>
           <DialogTrigger asChild>
             <Button size="sm"><Plus /> Add User</Button>
           </DialogTrigger>
@@ -147,11 +396,14 @@ function UsersSection() {
               </div>
               <div className="grid gap-2">
                 <Label>Role</Label>
-                <Select name="role" defaultValue="TECHNICIAN">
-                  <SelectTrigger><SelectValue /></SelectTrigger>
+                <Select value={selectedRole} onValueChange={setSelectedRole}>
+                  <SelectTrigger><SelectValue placeholder="Select a role" /></SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="ADMIN">Admin</SelectItem>
-                    <SelectItem value="TECHNICIAN">Technician</SelectItem>
+                    {roles.map((role) => (
+                      <SelectItem key={role.id} value={String(role.id)}>
+                        {role.name}
+                      </SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
               </div>
@@ -184,7 +436,7 @@ function UsersSection() {
               <TableRow key={user.id}>
                 <TableCell className="font-medium">{user.username}</TableCell>
                 <TableCell className="text-sm text-muted-foreground">{user.email}</TableCell>
-                <TableCell><Badge variant="outline">{user.role}</Badge></TableCell>
+                <TableCell><Badge variant="outline">{user.role.name}</Badge></TableCell>
                 <TableCell>
                   <Badge className={user.is_active ? 'bg-green-600' : 'bg-gray-400'}>
                     {user.is_active ? 'Active' : 'Inactive'}
@@ -195,7 +447,7 @@ function UsersSection() {
                     <Button
                       size="sm"
                       variant="ghost"
-                      onClick={() => setEditUser(user)}
+                      onClick={() => openEdit(user)}
                     >
                       <Pencil />
                     </Button>
@@ -216,7 +468,7 @@ function UsersSection() {
       </CardContent>
 
       {/* Edit User Dialog */}
-      <Dialog open={!!editUser} onOpenChange={(o) => { if (!o) setEditUser(null) }}>
+      <Dialog open={!!editUser} onOpenChange={(o) => { if (!o) { setEditUser(null); setEditSelectedRole('') } }}>
         <DialogContent>
           <DialogHeader><DialogTitle>Edit User</DialogTitle></DialogHeader>
           {editUser && (
@@ -230,7 +482,7 @@ function UsersSection() {
                     email: fd.get('email') as string,
                     first_name: fd.get('first_name') as string,
                     last_name: fd.get('last_name') as string,
-                    role: fd.get('role') as User['role'],
+                    role: Number(editSelectedRole),
                   },
                 })
               }}
@@ -252,11 +504,14 @@ function UsersSection() {
               </div>
               <div className="grid gap-2">
                 <Label>Role</Label>
-                <Select name="role" defaultValue={editUser.role}>
+                <Select value={editSelectedRole} onValueChange={setEditSelectedRole}>
                   <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="ADMIN">Admin</SelectItem>
-                    <SelectItem value="TECHNICIAN">Technician</SelectItem>
+                    {roles.map((role) => (
+                      <SelectItem key={role.id} value={String(role.id)}>
+                        {role.name}
+                      </SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
               </div>

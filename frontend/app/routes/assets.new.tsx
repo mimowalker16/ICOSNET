@@ -15,6 +15,7 @@ import {
   SelectValue,
 } from '~/components/ui/select'
 import { createAsset } from '~/lib/services/assets'
+import { RequirePermission } from '~/components/RequirePermission'
 
 export default function AssetNew() {
   const navigate = useNavigate()
@@ -46,6 +47,7 @@ export default function AssetNew() {
   }
 
   return (
+    <RequirePermission permission="create_asset">
     <div className="max-w-2xl mx-auto space-y-6">
       <h1 className="text-2xl font-bold">Add Asset</h1>
       <Card>
@@ -128,5 +130,6 @@ export default function AssetNew() {
         </CardContent>
       </Card>
     </div>
+    </RequirePermission>
   )
 }

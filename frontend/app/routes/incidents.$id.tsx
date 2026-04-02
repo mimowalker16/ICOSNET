@@ -28,6 +28,7 @@ import {
 import { getIncident, transitionIncident, updateIncident, addIncidentComment } from '~/lib/services/incidents'
 import { getUsers } from '~/lib/services/users'
 import type { Incident, IncidentLog, User } from '~/types'
+import { RequirePermission } from '~/components/RequirePermission'
 
 const VALID_TRANSITIONS: Record<string, string[]> = {
   NEW: ['ASSIGNED'],
@@ -124,6 +125,7 @@ export default function IncidentDetail() {
   }
 
   return (
+    <RequirePermission permission="view_incidents">
     <div className="space-y-6">
       <div className="flex items-center gap-4">
         <Link to="/incidents">
@@ -301,5 +303,6 @@ export default function IncidentDetail() {
         </CardContent>
       </Card>
     </div>
+    </RequirePermission>
   )
 }

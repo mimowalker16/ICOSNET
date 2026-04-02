@@ -1,14 +1,14 @@
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from users.permissions import IsAdmin
+from users.permissions import require_perm
 
 from .models import NotificationSettings
 from .serializers import NotificationSettingsSerializer
 
 
 class NotificationSettingsView(APIView):
-    permission_classes = [IsAdmin]
+    permission_classes = [require_perm('manage_notifications')]
 
     def get(self, request):
         obj = NotificationSettings.get()

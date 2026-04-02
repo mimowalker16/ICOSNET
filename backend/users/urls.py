@@ -1,7 +1,14 @@
 from django.urls import path
 from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
 
-from .views import MeView, UserDetailView, UserListCreateView
+from .views import (
+    AppPermissionListView,
+    MeView,
+    RoleDetailView,
+    RoleListCreateView,
+    UserDetailView,
+    UserListCreateView,
+)
 
 # Mounted at /api/auth/
 auth_urlpatterns = [
@@ -14,4 +21,15 @@ auth_urlpatterns = [
 user_urlpatterns = [
     path('', UserListCreateView.as_view(), name='user-list-create'),
     path('<int:pk>/', UserDetailView.as_view(), name='user-detail'),
+]
+
+# Mounted at /api/permissions/
+permission_urlpatterns = [
+    path('', AppPermissionListView.as_view(), name='permission-list'),
+]
+
+# Mounted at /api/roles/
+role_urlpatterns = [
+    path('', RoleListCreateView.as_view(), name='role-list-create'),
+    path('<int:pk>/', RoleDetailView.as_view(), name='role-detail'),
 ]

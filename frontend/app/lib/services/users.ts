@@ -15,7 +15,7 @@ export async function createUser(payload: {
   username: string
   email: string
   password: string
-  role: string
+  role: number
   first_name?: string
   last_name?: string
 }) {

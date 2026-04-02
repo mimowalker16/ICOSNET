@@ -3,6 +3,7 @@ import { useQuery } from '@tanstack/react-query'
 import { Link } from 'react-router'
 import { Plus, Search } from 'lucide-react'
 import { format } from 'date-fns'
+import { RequirePermission } from '~/components/RequirePermission'
 import { Button } from '~/components/ui/button'
 import { Input } from '~/components/ui/input'
 import { Badge } from '~/components/ui/badge'
@@ -54,6 +55,7 @@ export default function IncidentsList() {
   const paginatedIncidents = incidents.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE)
 
   return (
+    <RequirePermission permission="view_incidents">
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold">Incidents</h1>
@@ -142,5 +144,6 @@ export default function IncidentsList() {
       </div>
       <TablePagination page={page} totalPages={totalPages} onPageChange={setPage} />
     </div>
+    </RequirePermission>
   )
 }

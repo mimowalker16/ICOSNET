@@ -2,9 +2,10 @@ from datetime import timedelta
 
 from django.db.models import Avg, Count, DurationField, ExpressionWrapper, F
 from django.utils import timezone
-from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
+
+from users.permissions import require_perm
 
 from assets.models import Asset, AssetStatusLog
 from incidents.models import Incident
@@ -25,7 +26,7 @@ def _since(period_str: str):
 class MTTRView(APIView):
     """Mean Time To Repair — average hours from creation to resolution."""
 
-    permission_classes = [IsAuthenticated]
+    permission_classes = [require_perm('view_analytics')]
 
     def get(self, request):
         period = request.query_params.get('period', '30d')
@@ -51,7 +52,7 @@ class MTTRView(APIView):
 class TopFailingAssetsView(APIView):
     """Assets with the most incidents in the given period."""
 
-    permission_classes = [IsAuthenticated]
+    permission_classes = [require_perm('view_analytics')]
 
     def get(self, request):
         limit = int(request.query_params.get('limit', 5))
@@ -70,7 +71,7 @@ class TopFailingAssetsView(APIView):
 class UptimeView(APIView):
     """Uptime percentage per active asset over the given period."""
 
-    permission_classes = [IsAuthenticated]
+    permission_classes = [require_perm('view_analytics')]
 
     def get(self, request):
         period = request.query_params.get('period', '30d')
@@ -94,7 +95,7 @@ class UptimeView(APIView):
 class IncidentsBySeverityView(APIView):
     """Incident counts grouped by severity for the given period."""
 
-    permission_classes = [IsAuthenticated]
+    permission_classes = [require_perm('view_analytics')]
 
     def get(self, request):
         period = request.query_params.get('period', '30d')

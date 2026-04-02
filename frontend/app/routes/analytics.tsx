@@ -1,5 +1,6 @@
 import { useQuery } from '@tanstack/react-query'
 import { useState } from 'react'
+import { RequirePermission } from '~/components/RequirePermission'
 import {
   BarChart,
   Bar,
@@ -45,6 +46,7 @@ export default function Analytics() {
   const paginatedUptime = uptime.slice((uptimePage - 1) * UPTIME_PAGE_SIZE, uptimePage * UPTIME_PAGE_SIZE)
 
   return (
+    <RequirePermission permission="view_analytics">
     <div className="space-y-6">
       <h1 className="text-2xl font-bold">Analytics</h1>
 
@@ -150,5 +152,6 @@ export default function Analytics() {
         </Card>
       </div>
     </div>
+    </RequirePermission>
   )
 }

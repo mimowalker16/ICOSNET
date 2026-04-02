@@ -29,8 +29,17 @@ const adminItems = [
 ]
 
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
-  const { isAdmin } = useAuth()
-  const items = isAdmin ? [...navItems, ...adminItems] : navItems
+  const { hasPermission } = useAuth()
+
+  const items = [
+    ...navItems.filter((item) => {
+      if (item.to === '/assets') return hasPermission('view_assets')
+      if (item.to === '/incidents') return hasPermission('view_incidents')
+      if (item.to === '/analytics') return hasPermission('view_analytics')
+      return true
+    }),
+    ...(hasPermission('manage_users') ? adminItems : []),
+  ]
 
   return (
     <Sidebar variant="inset" collapsible="icon" {...props}>

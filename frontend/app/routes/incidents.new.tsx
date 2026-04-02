@@ -17,6 +17,7 @@ import {
 } from '~/components/ui/select'
 import { getAssets } from '~/lib/services/assets'
 import { createIncident } from '~/lib/services/incidents'
+import { RequirePermission } from '~/components/RequirePermission'
 import type { Asset } from '~/types'
 
 export default function IncidentNew() {
@@ -51,6 +52,7 @@ export default function IncidentNew() {
   }
 
   return (
+    <RequirePermission permission="create_incident">
     <div className="max-w-2xl mx-auto space-y-6">
       <h1 className="text-2xl font-bold">New Incident</h1>
       <Card>
@@ -117,5 +119,6 @@ export default function IncidentNew() {
         </CardContent>
       </Card>
     </div>
+    </RequirePermission>
   )
 }

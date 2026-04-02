@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { Link } from 'react-router'
 import { Plus, Search } from 'lucide-react'
+import { RequirePermission } from '~/components/RequirePermission'
 import { Button } from '~/components/ui/button'
 import { Input } from '~/components/ui/input'
 import { Badge } from '~/components/ui/badge'
@@ -55,6 +56,7 @@ export default function AssetsList() {
   const paginatedAssets = assets.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE)
 
   return (
+    <RequirePermission permission="view_assets">
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold">Assets</h1>
@@ -138,5 +140,6 @@ export default function AssetsList() {
       </div>
       <TablePagination page={page} totalPages={totalPages} onPageChange={setPage} />
     </div>
+    </RequirePermission>
   )
 }

@@ -1,12 +1,32 @@
+export interface AppPermission {
+  id: number
+  codename: string
+  name: string
+}
+
+export interface Role {
+  id: number
+  name: string
+  description: string
+  is_admin: boolean
+  is_system: boolean
+  permissions: AppPermission[]
+  created_at: string
+}
+
 export interface User {
   id: number
   username: string
   email: string
-  role: 'ADMIN' | 'TECHNICIAN'
+  role: Role
   first_name: string
   last_name: string
   is_active: boolean
   date_joined: string
+}
+
+export interface MeUser extends User {
+  permissions: string[]
 }
 
 export interface Asset {
