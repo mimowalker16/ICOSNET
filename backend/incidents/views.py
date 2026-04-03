@@ -110,7 +110,7 @@ class IncidentLogsView(APIView):
 
     def get_permissions(self):
         if self.request.method in SAFE_METHODS:
-            return [require_perm('view_incidents')()]
+            return [require_perm('view_incident_logs')()]
         return [require_perm('comment_incident')()]
 
     def get(self, request, pk):

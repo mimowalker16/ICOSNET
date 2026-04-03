@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useParams, Link, useNavigate } from 'react-router'
 import { format } from 'date-fns'
-import { ArrowLeft, Pencil, Trash2, AlertCircle } from 'lucide-react'
+import { ArrowLeft, Pencil, Trash2, AlertCircle, Activity } from 'lucide-react'
 import {
   AreaChart,
   Area,
@@ -51,6 +51,7 @@ import {
 } from '~/components/ui/select'
 import type { Asset, StatusLog, Incident } from '~/types'
 import { RequirePermission } from '~/components/RequirePermission'
+import { useAuth } from '~/store/AuthContext'
 
 function statusColor(status?: string) {
   switch (status) {
@@ -66,6 +67,7 @@ export default function AssetDetail() {
   const assetId = Number(id)
   const navigate = useNavigate()
   const queryClient = useQueryClient()
+  const { hasPermission } = useAuth()
   const [editOpen, setEditOpen] = useState(false)
   const [deleteOpen, setDeleteOpen] = useState(false)
   const [incPage, setIncPage] = useState(1)
@@ -159,6 +161,11 @@ export default function AssetDetail() {
         <Button variant="destructive" size="sm" onClick={() => setDeleteOpen(true)}>
           <Trash2 /> Delete
         </Button>
+        {hasPermission('view_asset_logs') && (
+          <Link to={`/assets/${assetId}/logs`}>
+            <Button variant="outline" size="sm"><Activity /> Logs</Button>
+          </Link>
+        )}
       </div>
 
       {/* Edit Drawer — slides up from bottom */}

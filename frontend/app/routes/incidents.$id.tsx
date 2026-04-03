@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { useParams, Link } from 'react-router'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { format } from 'date-fns'
-import { ArrowLeft, Send, AlertCircle, Pencil } from 'lucide-react'
+import { ArrowLeft, Send, AlertCircle, Pencil, ScrollText } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '~/components/ui/card'
 import { Badge } from '~/components/ui/badge'
 import { Button } from '~/components/ui/button'
@@ -156,6 +156,11 @@ export default function IncidentDetail() {
         <Button variant="outline" size="sm" onClick={() => setEditOpen(true)}>
           <Pencil /> Edit
         </Button>
+        {hasPermission('view_incident_logs') && (
+          <Link to={`/incidents/${incidentId}/logs`}>
+            <Button variant="outline" size="sm"><ScrollText className="size-4" /> Logs</Button>
+          </Link>
+        )}
       </div>
 
       <Dialog open={editOpen} onOpenChange={setEditOpen}>
