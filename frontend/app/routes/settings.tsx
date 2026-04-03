@@ -37,8 +37,7 @@ import { AccessDenied } from '~/components/AccessDenied'
 import { getUsers, createUser, updateUser } from '~/lib/services/users'
 import { getNotificationSettings, updateNotificationSettings } from '~/lib/services/notifications'
 import { getRoles, getPermissions, createRole, updateRole, deleteRole } from '~/lib/services/roles'
-import { getStatusRoleMappings, createStatusRoleMapping, deleteStatusRoleMapping } from '~/lib/services/incidents'
-import type { User, Role, AppPermission, StatusRoleMapping } from '~/types'
+import type { User, Role, AppPermission } from '~/types'
 
 export default function SettingsPage() {
   const { hasPermission } = useAuth()
@@ -51,8 +50,6 @@ export default function SettingsPage() {
     <div className="space-y-8">
       <h1 className="text-2xl font-bold">Settings</h1>
       <RolesSection />
-      <Separator />
-      <AssignmentRulesSection />
       <Separator />
       <UsersSection />
       <Separator />
@@ -291,141 +288,6 @@ function RolesSection() {
           )}
         </DialogContent>
       </Dialog>
-    </Card>
-  )
-}
-
-const INCIDENT_STATUSES = ['NEW', 'ASSIGNED', 'IN_PROGRESS', 'RESOLVED', 'CLOSED'] as const
-
-function AssignmentRulesSection() {
-  const queryClient = useQueryClient()
-  const [open, setOpen] = useState(false)
-  const [selectedStatus, setSelectedStatus] = useState('')
-  const [selectedRole, setSelectedRole] = useState('')
-  const [error, setError] = useState('')
-
-  const { data: mappings = [] } = useQuery<StatusRoleMapping[]>({
-    queryKey: ['status-role-mappings'],
-    queryFn: getStatusRoleMappings,
-  })
-
-  const { data: roles = [] } = useQuery<Role[]>({
-    queryKey: ['roles'],
-    queryFn: getRoles,
-  })
-
-  const mappedStatuses = new Set(mappings.map((m) => m.status))
-  const unmappedStatuses = INCIDENT_STATUSES.filter((s) => !mappedStatuses.has(s))
-
-  const createMut = useMutation({
-    mutationFn: createStatusRoleMapping,
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['status-role-mappings'] })
-      setOpen(false)
-      setSelectedStatus('')
-      setSelectedRole('')
-      setError('')
-    },
-    onError: () => setError('Failed to create mapping'),
-  })
-
-  const deleteMut = useMutation({
-    mutationFn: deleteStatusRoleMapping,
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['status-role-mappings'] }),
-  })
-
-  function handleCreate(e: FormEvent<HTMLFormElement>) {
-    e.preventDefault()
-    if (!selectedStatus || !selectedRole) return
-    createMut.mutate({ status: selectedStatus, role: Number(selectedRole) })
-  }
-
-  return (
-    <Card>
-      <CardHeader className="flex flex-row items-center justify-between">
-        <CardTitle>Assignment Rules</CardTitle>
-        <Dialog open={open} onOpenChange={(o) => { setOpen(o); if (!o) { setSelectedStatus(''); setSelectedRole(''); setError('') } }}>
-          <DialogTrigger asChild>
-            <Button size="sm" disabled={unmappedStatuses.length === 0}><Plus /> Add Rule</Button>
-          </DialogTrigger>
-          <DialogContent>
-            <DialogHeader><DialogTitle>Add Assignment Rule</DialogTitle></DialogHeader>
-            <form onSubmit={handleCreate} className="space-y-4">
-              <div className="grid gap-2">
-                <Label>Status</Label>
-                <Select value={selectedStatus} onValueChange={setSelectedStatus}>
-                  <SelectTrigger><SelectValue placeholder="Select status" /></SelectTrigger>
-                  <SelectContent>
-                    {unmappedStatuses.map((s) => (
-                      <SelectItem key={s} value={s}>{s.replace('_', ' ')}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="grid gap-2">
-                <Label>Required Role</Label>
-                <Select value={selectedRole} onValueChange={setSelectedRole}>
-                  <SelectTrigger><SelectValue placeholder="Select role" /></SelectTrigger>
-                  <SelectContent>
-                    {roles.map((role) => (
-                      <SelectItem key={role.id} value={String(role.id)}>{role.name}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              {error && (
-                <Alert variant="destructive">
-                  <AlertCircle />
-                  <AlertDescription>{error}</AlertDescription>
-                </Alert>
-              )}
-              <Button type="submit" className="w-full" disabled={createMut.isPending || !selectedStatus || !selectedRole}>
-                {createMut.isPending ? 'Creating...' : 'Create Rule'}
-              </Button>
-            </form>
-          </DialogContent>
-        </Dialog>
-      </CardHeader>
-      <CardContent>
-        <p className="text-sm text-muted-foreground mb-4">
-          Configure which role the assignee must belong to when an incident transitions to a given status.
-        </p>
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Status</TableHead>
-              <TableHead>Required Role</TableHead>
-              <TableHead>Actions</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {mappings.length === 0 ? (
-              <TableRow>
-                <TableCell colSpan={3} className="text-center text-muted-foreground">
-                  No assignment rules configured. All users can be assigned at any status.
-                </TableCell>
-              </TableRow>
-            ) : (
-              mappings.map((m) => (
-                <TableRow key={m.id}>
-                  <TableCell><Badge variant="outline">{m.status.replace('_', ' ')}</Badge></TableCell>
-                  <TableCell className="font-medium">{m.role_name}</TableCell>
-                  <TableCell>
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      onClick={() => deleteMut.mutate(m.id)}
-                      disabled={deleteMut.isPending}
-                    >
-                      <Trash2 />
-                    </Button>
-                  </TableCell>
-                </TableRow>
-              ))
-            )}
-          </TableBody>
-        </Table>
-      </CardContent>
     </Card>
   )
 }

@@ -119,21 +119,6 @@ export interface UptimeEntry {
   uptime_pct: number | null
 }
 
-export interface StatusRoleMapping {
-  id: number
-  status: string
-  role: number
-  role_name: string
-}
-
-export interface EligibleAssignee {
-  id: number
-  username: string
-  first_name: string
-  last_name: string
-  role_name: string
-}
-
 export interface SeverityCount {
   severity: string
   count: number
