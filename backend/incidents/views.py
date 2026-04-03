@@ -1,5 +1,6 @@
 from django.contrib.auth import get_user_model
 from django.shortcuts import get_object_or_404
+from drf_spectacular.utils import extend_schema, extend_schema_view
 from rest_framework import generics, status
 from rest_framework.permissions import SAFE_METHODS
 from rest_framework.response import Response
@@ -21,6 +22,20 @@ from .serializers import (
 User = get_user_model()
 
 
+@extend_schema_view(
+    list=extend_schema(
+        tags=['incidents'],
+        summary='List incidents',
+        description='Returns all incidents. Supports filtering by `status`, `severity`, `assigned_to`, `asset`, and `source`.',
+        responses={200: IncidentListSerializer},
+    ),
+    create=extend_schema(
+        tags=['incidents'],
+        summary='Create incident',
+        request=IncidentCreateSerializer,
+        responses={201: IncidentDetailSerializer},
+    ),
+)
 class IncidentListCreateView(generics.ListCreateAPIView):
     filterset_fields = ['status', 'severity', 'assigned_to', 'asset', 'source']
     search_fields = ['title', 'description']
@@ -40,6 +55,11 @@ class IncidentListCreateView(generics.ListCreateAPIView):
         return IncidentListSerializer
 
 
+@extend_schema_view(
+    retrieve=extend_schema(tags=['incidents'], summary='Get incident', responses={200: IncidentDetailSerializer}),
+    update=extend_schema(tags=['incidents'], summary='Update incident (full)', request=IncidentUpdateSerializer, responses={200: IncidentDetailSerializer}),
+    partial_update=extend_schema(tags=['incidents'], summary='Update incident (partial)', request=IncidentUpdateSerializer, responses={200: IncidentDetailSerializer}),
+)
 class IncidentDetailView(generics.RetrieveUpdateAPIView):
     queryset = Incident.objects.select_related(
         'asset', 'created_by', 'assigned_to',
@@ -59,6 +79,17 @@ class IncidentDetailView(generics.RetrieveUpdateAPIView):
 class IncidentTransitionView(APIView):
     permission_classes = [require_perm('transition_incident')]
 
+    @extend_schema(
+        tags=['incidents'],
+        summary='Transition incident status',
+        description=(
+            'Advances the incident through its ITIL lifecycle. '
+            'Valid transitions: NEW -> ASSIGNED, ASSIGNED -> IN_PROGRESS, IN_PROGRESS -> RESOLVED, any -> CLOSED. '
+            'When assigning, `assigned_to` must be a user with the appropriate permission.'
+        ),
+        request=TransitionSerializer,
+        responses={200: IncidentDetailSerializer},
+    )
     def post(self, request, pk):
         incident = get_object_or_404(Incident, pk=pk)
         serializer = TransitionSerializer(data=request.data)
@@ -114,10 +145,23 @@ class IncidentLogsView(APIView):
             return [require_perm('view_incident_logs')()]
         return [require_perm('comment_incident')()]
 
+    @extend_schema(
+        tags=['incidents'],
+        summary='List incident activity log',
+        description='Returns the full activity log for an incident (status changes, assignments, comments). Requires `view_incident_logs` permission.',
+        responses={200: IncidentLogSerializer(many=True)},
+    )
     def get(self, request, pk):
         logs = IncidentLog.objects.filter(incident_id=pk).select_related('actor')
         return Response(IncidentLogSerializer(logs, many=True).data)
 
+    @extend_schema(
+        tags=['incidents'],
+        summary='Add comment to incident',
+        description='Posts a comment on the incident timeline. Requires `comment_incident` permission.',
+        request=CommentSerializer,
+        responses={201: IncidentLogSerializer},
+    )
     def post(self, request, pk):
         incident = get_object_or_404(Incident, pk=pk)
         serializer = CommentSerializer(data=request.data)

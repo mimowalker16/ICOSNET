@@ -32,6 +32,7 @@ INSTALLED_APPS = [
     'corsheaders',
     'django_filters',
     'django_celery_beat',
+    'drf_spectacular',
     # Local apps
     'users',
     'assets',
@@ -118,6 +119,33 @@ REST_FRAMEWORK = {
     ],
     'DEFAULT_PAGINATION_CLASS': 'rest_framework.pagination.PageNumberPagination',
     'PAGE_SIZE': 25,
+    'DEFAULT_SCHEMA_CLASS': 'drf_spectacular.openapi.AutoSchema',
+}
+
+SPECTACULAR_SETTINGS = {
+    'TITLE': 'ICOSNET ITSM API',
+    'DESCRIPTION': (
+        'REST API for the ICOSNET IT Supervision & Incident Management Platform.\n\n'
+        'All endpoints require a Bearer JWT token except `/api/auth/login/` and `/api/auth/token/refresh/`.\n'
+        'Obtain a token via `POST /api/auth/login/` with `{username, password}`.'
+    ),
+    'VERSION': '1.0.0',
+    'SERVE_INCLUDE_SCHEMA': False,
+    'COMPONENT_SPLIT_REQUEST': True,
+    'ENUM_NAME_OVERRIDES': {
+        'IncidentStatusEnum': 'incidents.models.Incident.Status',
+        'AssetStatusEnum': 'assets.models.AssetStatusLog.Status',
+    },
+    'TAGS': [
+        {'name': 'auth', 'description': 'Authentication — login, token refresh, current user'},
+        {'name': 'users', 'description': 'User management (admin only)'},
+        {'name': 'roles', 'description': 'Role management (admin only)'},
+        {'name': 'permissions', 'description': 'ITSM permission catalog (admin only)'},
+        {'name': 'assets', 'description': 'Monitored resource management'},
+        {'name': 'incidents', 'description': 'Incident lifecycle management'},
+        {'name': 'analytics', 'description': 'KPI dashboards — MTTR, uptime, top-failing assets'},
+        {'name': 'notifications', 'description': 'Notification channel configuration'},
+    ],
 }
 
 SIMPLE_JWT = {

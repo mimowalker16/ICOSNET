@@ -6,6 +6,9 @@ django-environ==0.11.2
 django-cors-headers==4.3.1
 django-filter==24.1
 
+# API documentation
+drf-spectacular==0.29.0
+
 # Database (psycopg3 — pre-built wheels for Windows/Python 3.13)
 psycopg[binary]==3.2.9
 

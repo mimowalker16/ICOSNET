@@ -106,13 +106,41 @@ The Django admin panel is available at `http://localhost:5173/admin/`.
 
 ## API Overview
 
-All endpoints are under `/api/` and require a Bearer JWT token except `/api/token/` and `/api/token/refresh/`.
+All endpoints are under `/api/` and require a `Bearer` JWT token except `/api/auth/login/` and `/api/auth/token/refresh/`.
 
-| Resource | Endpoints |
+### Interactive Docs
+
+Start the backend (`python manage.py runserver`) then open:
+
+| URL | Interface |
 |---|---|
-| Auth | `POST /api/token/` · `POST /api/token/refresh/` |
-| Users | `GET/POST /api/users/` · `GET/PATCH /api/users/{id}/` |
-| Assets | `GET/POST /api/assets/` · `GET/PATCH/DELETE /api/assets/{id}/` · `GET /api/assets/{id}/status-history/` |
-| Incidents | `GET/POST /api/incidents/` · `GET/PATCH /api/incidents/{id}/` · `POST /api/incidents/{id}/transition/` · `POST /api/incidents/{id}/comments/` |
-| Analytics | `GET /api/analytics/uptime/` · `GET /api/analytics/mttr/` · `GET /api/analytics/top-failing/` |
-| Notifications | `GET/PATCH /api/notifications/settings/` |
+| `http://localhost:8000/api/docs/` | Swagger UI |
+| `http://localhost:8000/api/redoc/` | ReDoc |
+| `http://localhost:8000/api/schema/` | Raw OpenAPI YAML |
+
+### Endpoint Reference
+
+| Resource | Method | Path | Permission required |
+|---|---|---|---|
+| Auth | POST | `/api/auth/login/` | — |
+| Auth | POST | `/api/auth/token/refresh/` | — |
+| Auth | GET | `/api/auth/me/` | Authenticated |
+| Users | GET | `/api/users/` | Admin (or any auth with `?permission=`) |
+| Users | POST | `/api/users/` | Admin |
+| Users | GET / PATCH | `/api/users/{id}/` | Admin |
+| Permissions | GET | `/api/permissions/` | Admin |
+| Roles | GET / POST | `/api/roles/` | Admin |
+| Roles | GET / PATCH / DELETE | `/api/roles/{id}/` | Admin |
+| Assets | GET / POST | `/api/assets/` | `view_assets` / `create_asset` |
+| Assets | GET / PATCH / DELETE | `/api/assets/{id}/` | `view_assets` / `edit_asset` / `delete_asset` |
+| Assets | GET | `/api/assets/{id}/status-history/` | `view_asset_logs` |
+| Incidents | GET / POST | `/api/incidents/` | `view_incidents` / `create_incident` |
+| Incidents | GET / PATCH | `/api/incidents/{id}/` | `view_incidents` / `transition_incident` |
+| Incidents | POST | `/api/incidents/{id}/transition/` | `transition_incident` |
+| Incidents | GET | `/api/incidents/{id}/logs/` | `view_incident_logs` |
+| Incidents | POST | `/api/incidents/{id}/logs/` | `comment_incident` |
+| Analytics | GET | `/api/analytics/mttr/` | `view_analytics` |
+| Analytics | GET | `/api/analytics/uptime/` | `view_analytics` |
+| Analytics | GET | `/api/analytics/top-failing/` | `view_analytics` |
+| Analytics | GET | `/api/analytics/incidents-by-severity/` | `view_analytics` |
+| Notifications | GET / PUT | `/api/notifications/settings/` | `manage_notifications` |

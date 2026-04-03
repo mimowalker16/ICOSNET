@@ -1,4 +1,5 @@
 from django.contrib.auth.password_validation import validate_password
+from drf_spectacular.utils import extend_schema_field
 from rest_framework import serializers
 
 from .app_permissions import ALL_CODENAMES
@@ -88,6 +89,7 @@ class MeSerializer(serializers.ModelSerializer):
         model = User
         fields = ('id', 'username', 'email', 'role', 'first_name', 'last_name', 'permissions')
 
+    @extend_schema_field(serializers.ListField(child=serializers.CharField()))
     def get_permissions(self, obj):
         if obj.role and obj.role.is_admin:
             return ALL_CODENAMES

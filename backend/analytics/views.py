@@ -2,6 +2,8 @@ from datetime import timedelta
 
 from django.db.models import Avg, Count, DurationField, ExpressionWrapper, F
 from django.utils import timezone
+from drf_spectacular.utils import OpenApiParameter, extend_schema, inline_serializer
+from rest_framework import serializers
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
@@ -28,6 +30,19 @@ class MTTRView(APIView):
 
     permission_classes = [require_perm('view_analytics')]
 
+    @extend_schema(
+        tags=['analytics'],
+        summary='Mean Time To Repair (MTTR)',
+        description='Returns the average resolution time in hours for the given period.',
+        parameters=[
+            OpenApiParameter(name='period', description='Look-back window, e.g. `30d` (days) or `3m` (months). Defaults to `30d`.', required=False, type=str),
+        ],
+        responses={200: inline_serializer(name='MTTRResponse', fields={
+            'period': serializers.CharField(),
+            'mttr_hours': serializers.FloatField(allow_null=True),
+            'total_resolved': serializers.IntegerField(),
+        })},
+    )
     def get(self, request):
         period = request.query_params.get('period', '30d')
         since = _since(period)
@@ -54,6 +69,21 @@ class TopFailingAssetsView(APIView):
 
     permission_classes = [require_perm('view_analytics')]
 
+    @extend_schema(
+        tags=['analytics'],
+        summary='Top failing assets',
+        description='Returns assets with the highest incident counts in the given period.',
+        parameters=[
+            OpenApiParameter(name='period', description='Look-back window. Defaults to `30d`.', required=False, type=str),
+            OpenApiParameter(name='limit', description='Number of assets to return. Defaults to `5`.', required=False, type=int),
+        ],
+        responses={200: inline_serializer(name='TopFailingAssetItem', fields={
+            'asset__id': serializers.IntegerField(),
+            'asset__name': serializers.CharField(),
+            'asset__asset_type': serializers.CharField(),
+            'incident_count': serializers.IntegerField(),
+        }, many=True)},
+    )
     def get(self, request):
         limit = int(request.query_params.get('limit', 5))
         period = request.query_params.get('period', '30d')
@@ -73,6 +103,22 @@ class UptimeView(APIView):
 
     permission_classes = [require_perm('view_analytics')]
 
+    @extend_schema(
+        tags=['analytics'],
+        summary='Asset uptime',
+        description='Returns uptime percentages for all active assets based on status-check logs in the given period.',
+        parameters=[
+            OpenApiParameter(name='period', description='Look-back window. Defaults to `30d`.', required=False, type=str),
+        ],
+        responses={200: inline_serializer(name='UptimeAsset', fields={
+            'asset_id': serializers.IntegerField(),
+            'asset_name': serializers.CharField(),
+            'asset_type': serializers.CharField(),
+            'total_checks': serializers.IntegerField(),
+            'up_checks': serializers.IntegerField(),
+            'uptime_pct': serializers.FloatField(allow_null=True),
+        }, many=True)},
+    )
     def get(self, request):
         period = request.query_params.get('period', '30d')
         since = _since(period)
@@ -97,6 +143,18 @@ class IncidentsBySeverityView(APIView):
 
     permission_classes = [require_perm('view_analytics')]
 
+    @extend_schema(
+        tags=['analytics'],
+        summary='Incidents by severity',
+        description='Returns incident counts grouped by severity level for the given period.',
+        parameters=[
+            OpenApiParameter(name='period', description='Look-back window. Defaults to `30d`.', required=False, type=str),
+        ],
+        responses={200: inline_serializer(name='SeverityBreakdown', fields={
+            'severity': serializers.CharField(),
+            'count': serializers.IntegerField(),
+        }, many=True)},
+    )
     def get(self, request):
         period = request.query_params.get('period', '30d')
         since = _since(period)

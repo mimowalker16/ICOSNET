@@ -1,3 +1,4 @@
+from drf_spectacular.utils import OpenApiParameter, extend_schema, extend_schema_view
 from rest_framework import generics, status
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
@@ -19,10 +20,43 @@ from .serializers import (
 class MeView(APIView):
     permission_classes = [IsAuthenticated]
 
+    @extend_schema(
+        tags=['auth'],
+        summary='Get current user',
+        description='Returns the profile of the currently authenticated user.',
+        responses={200: MeSerializer},
+    )
     def get(self, request):
         return Response(MeSerializer(request.user).data)
 
 
+@extend_schema_view(
+    list=extend_schema(
+        tags=['users'],
+        summary='List users',
+        description=(
+            'Returns all users (admin only). '
+            'Any authenticated user may pass `?permission=<codename>` to get users who have that permission '
+            '(used by incident-assignment pickers).'
+        ),
+        parameters=[
+            OpenApiParameter(
+                name='permission',
+                description='Filter by permission codename. When set, any authenticated user may call this endpoint.',
+                required=False,
+                type=str,
+            ),
+        ],
+        responses={200: UserSerializer(many=True)},
+    ),
+    create=extend_schema(
+        tags=['users'],
+        summary='Create user',
+        description='Create a new user account. Admin only.',
+        request=UserCreateSerializer,
+        responses={201: UserSerializer},
+    ),
+)
 class UserListCreateView(generics.ListCreateAPIView):
 
     def get_permissions(self):
@@ -44,6 +78,11 @@ class UserListCreateView(generics.ListCreateAPIView):
         return UserSerializer
 
 
+@extend_schema_view(
+    retrieve=extend_schema(tags=['users'], summary='Get user', responses={200: UserSerializer}),
+    update=extend_schema(tags=['users'], summary='Update user (full)', request=UserUpdateSerializer, responses={200: UserSerializer}),
+    partial_update=extend_schema(tags=['users'], summary='Update user (partial)', request=UserUpdateSerializer, responses={200: UserSerializer}),
+)
 class UserDetailView(generics.RetrieveUpdateAPIView):
     queryset = User.objects.select_related('role').all()
     permission_classes = [IsAdmin]
@@ -56,6 +95,14 @@ class UserDetailView(generics.RetrieveUpdateAPIView):
 
 # ── Permission & Role endpoints ────────────────────────────────────
 
+@extend_schema_view(
+    list=extend_schema(
+        tags=['permissions'],
+        summary='List ITSM permissions',
+        description='Returns all available ITSM permission codenames. Admin only.',
+        responses={200: AppPermissionSerializer},
+    ),
+)
 class AppPermissionListView(generics.ListAPIView):
     queryset = AppPermission.objects.all()
     serializer_class = AppPermissionSerializer
@@ -63,6 +110,21 @@ class AppPermissionListView(generics.ListAPIView):
     pagination_class = None
 
 
+@extend_schema_view(
+    list=extend_schema(
+        tags=['roles'],
+        summary='List roles',
+        description='Returns all roles with their assigned permissions. Admin only.',
+        responses={200: RoleSerializer},
+    ),
+    create=extend_schema(
+        tags=['roles'],
+        summary='Create role',
+        description='Create a new role and assign permissions to it. Admin only.',
+        request=RoleWriteSerializer,
+        responses={201: RoleSerializer},
+    ),
+)
 class RoleListCreateView(generics.ListCreateAPIView):
     queryset = Role.objects.prefetch_related('permissions').all()
     permission_classes = [IsAdmin]
@@ -74,6 +136,12 @@ class RoleListCreateView(generics.ListCreateAPIView):
         return RoleSerializer
 
 
+@extend_schema_view(
+    retrieve=extend_schema(tags=['roles'], summary='Get role', responses={200: RoleSerializer}),
+    update=extend_schema(tags=['roles'], summary='Update role (full)', request=RoleWriteSerializer, responses={200: RoleSerializer}),
+    partial_update=extend_schema(tags=['roles'], summary='Update role (partial)', request=RoleWriteSerializer, responses={200: RoleSerializer}),
+    destroy=extend_schema(tags=['roles'], summary='Delete role', responses={204: None}),
+)
 class RoleDetailView(generics.RetrieveUpdateDestroyAPIView):
     queryset = Role.objects.prefetch_related('permissions').all()
     permission_classes = [IsAdmin]
