@@ -97,7 +97,7 @@ class Incident(models.Model):
         except SLAPolicy.DoesNotExist:
             pass
 
-    def transition_to(self, new_status, actor=None, comment=''):
+    def transition_to(self, new_status, actor=None, comment='', new_assigned_to=None):
         """Perform an ITIL lifecycle transition, logging the change."""
         allowed = self.VALID_TRANSITIONS.get(self.status, [])
         if new_status not in allowed:
@@ -115,6 +115,17 @@ class Incident(models.Model):
         # Un-assign when bouncing back to NEW
         if new_status == self.Status.NEW:
             self.assigned_to = None
+        elif new_assigned_to is not None:
+            old_assignee = self.assigned_to
+            self.assigned_to = new_assigned_to
+            self.save()
+            IncidentLog.objects.create(
+                incident=self,
+                actor=actor,
+                action_type=IncidentLog.ActionType.ASSIGNMENT,
+                old_value=old_assignee.username if old_assignee else '',
+                new_value=new_assigned_to.username,
+            )
 
         self.save()
 

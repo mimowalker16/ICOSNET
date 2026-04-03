@@ -1,3 +1,4 @@
+from django.contrib.auth import get_user_model
 from django.shortcuts import get_object_or_404
 from rest_framework import generics, status
 from rest_framework.permissions import SAFE_METHODS
@@ -16,6 +17,8 @@ from .serializers import (
     IncidentUpdateSerializer,
     TransitionSerializer,
 )
+
+User = get_user_model()
 
 
 class IncidentListCreateView(generics.ListCreateAPIView):
@@ -60,11 +63,43 @@ class IncidentTransitionView(APIView):
         incident = get_object_or_404(Incident, pk=pk)
         serializer = TransitionSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
+
+        new_status = serializer.validated_data['new_status']
+        assigned_to_id = serializer.validated_data.get('assigned_to')
+        new_assigned_to = None
+
+        if assigned_to_id:
+            try:
+                assignee = User.objects.select_related('role').get(pk=assigned_to_id)
+            except User.DoesNotExist:
+                return Response({'assigned_to': 'User not found.'}, status=status.HTTP_400_BAD_REQUEST)
+
+            role = getattr(assignee, 'role', None)
+            if role is None:
+                return Response(
+                    {'assigned_to': 'Assignee has no role assigned.'},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+
+            if new_status == Incident.Status.ASSIGNED:
+                required_perm = 'assign_incident'
+            else:  # IN_PROGRESS
+                required_perm = 'transition_incident'
+
+            has_perm = role.is_admin or role.permissions.filter(codename=required_perm).exists()
+            if not has_perm:
+                return Response(
+                    {'assigned_to': f"This user does not have the '{required_perm}' permission."},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+            new_assigned_to = assignee
+
         try:
             incident.transition_to(
-                new_status=serializer.validated_data['new_status'],
+                new_status=new_status,
                 actor=request.user,
                 comment=serializer.validated_data.get('comment', ''),
+                new_assigned_to=new_assigned_to,
             )
         except ValueError as exc:
             return Response({'detail': str(exc)}, status=status.HTTP_400_BAD_REQUEST)

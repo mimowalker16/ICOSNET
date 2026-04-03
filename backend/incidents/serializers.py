@@ -1,7 +1,7 @@
 from django.utils import timezone
 from rest_framework import serializers
 
-from .models import Incident, IncidentLog, StatusRoleMapping
+from .models import Incident, IncidentLog
 
 
 class IncidentLogSerializer(serializers.ModelSerializer):
@@ -41,11 +41,17 @@ class IncidentDetailSerializer(IncidentListSerializer):
 class IncidentCreateSerializer(serializers.ModelSerializer):
     class Meta:
         model = Incident
-        fields = ('title', 'description', 'asset', 'severity', 'source', 'assigned_to')
+        fields = ('title', 'description', 'asset', 'severity', 'source')
 
     def create(self, validated_data):
         user = self.context['request'].user
-        incident = Incident.objects.create(created_by=user, **validated_data)
+        source = validated_data.get('source', Incident.Source.MANUAL)
+        assigned_to = user if source == Incident.Source.MANUAL else None
+        incident = Incident.objects.create(
+            created_by=user,
+            assigned_to=assigned_to,
+            **validated_data,
+        )
         incident.compute_and_save_sla_deadline()
         IncidentLog.objects.create(
             incident=incident,
@@ -83,21 +89,18 @@ class TransitionSerializer(serializers.Serializer):
     comment = serializers.CharField(required=False, allow_blank=True, default='')
     assigned_to = serializers.IntegerField(required=False, allow_null=True)
 
+    def validate(self, attrs):
+        new_status = attrs.get('new_status')
+        assigned_to = attrs.get('assigned_to')
+        if new_status in (Incident.Status.ASSIGNED, Incident.Status.IN_PROGRESS) and not assigned_to:
+            raise serializers.ValidationError(
+                {'assigned_to': 'This field is required when transitioning to ASSIGNED or IN_PROGRESS.'}
+            )
+        return attrs
+
 
 class CommentSerializer(serializers.Serializer):
     comment = serializers.CharField()
 
 
-class StatusRoleMappingSerializer(serializers.ModelSerializer):
-    role_name = serializers.CharField(source='role.name', read_only=True)
 
-    class Meta:
-        model = StatusRoleMapping
-        fields = ('id', 'status', 'role', 'role_name')
-        read_only_fields = ('id', 'role_name')
-
-
-class StatusRoleMappingWriteSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = StatusRoleMapping
-        fields = ('status', 'role')

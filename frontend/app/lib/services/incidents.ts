@@ -28,8 +28,8 @@ export async function updateIncident(id: number, payload: Partial<Incident>) {
   return data
 }
 
-export async function transitionIncident(id: number, status: string, comment?: string) {
-  const { data } = await client.post<Incident>(`incidents/${id}/transition/`, { new_status: status, comment })
+export async function transitionIncident(id: number, status: string, comment?: string, assigned_to?: number) {
+  const { data } = await client.post<Incident>(`incidents/${id}/transition/`, { new_status: status, comment, assigned_to })
   return data
 }
 

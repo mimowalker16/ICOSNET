@@ -23,6 +23,11 @@ export async function createUser(payload: {
   return data
 }
 
+export async function getUsersByPermission(codename: string) {
+  const { data } = await client.get<{ count: number; results: User[] } | User[]>(`users/?permission=${codename}`)
+  return Array.isArray(data) ? data : data.results
+}
+
 export async function updateUser(id: number, payload: Partial<User>) {
   const { data } = await client.patch<User>(`users/${id}/`, payload)
   return data

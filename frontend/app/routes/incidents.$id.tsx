@@ -26,9 +26,10 @@ import {
   DialogTitle,
 } from '~/components/ui/dialog'
 import { getIncident, transitionIncident, updateIncident, addIncidentComment } from '~/lib/services/incidents'
-import { getUsers } from '~/lib/services/users'
+import { getUsersByPermission } from '~/lib/services/users'
 import type { Incident, IncidentLog, User } from '~/types'
 import { RequirePermission } from '~/components/RequirePermission'
+import { useAuth } from '~/store/AuthContext'
 
 const VALID_TRANSITIONS: Record<string, string[]> = {
   NEW: ['ASSIGNED'],
@@ -46,8 +47,10 @@ export default function IncidentDetail() {
   const { id } = useParams()
   const incidentId = Number(id)
   const queryClient = useQueryClient()
+  const { hasPermission } = useAuth()
   const [comment, setComment] = useState('')
-  const [assignTo, setAssignTo] = useState('')
+  const [selectedHead, setSelectedHead] = useState('')
+  const [selectedMember, setSelectedMember] = useState('')
   const [transitionError, setTransitionError] = useState('')
   const [editOpen, setEditOpen] = useState(false)
 
@@ -56,30 +59,37 @@ export default function IncidentDetail() {
     queryFn: () => getIncident(incidentId),
   })
 
-  const { data: users = [] } = useQuery<User[]>({
-    queryKey: ['users'],
-    queryFn: getUsers,
+  // Users eligible to be assigned as Head (need assign_incident)
+  const { data: heads = [] } = useQuery<User[]>({
+    queryKey: ['users-by-perm', 'assign_incident'],
+    queryFn: () => getUsersByPermission('assign_incident'),
+    enabled: (incident?.status === 'NEW' || incident?.status === 'IN_PROGRESS') && hasPermission('assign_incident'),
+  })
+
+  // Users eligible to be escalated as Member (need transition_incident)
+  const { data: members = [] } = useQuery<User[]>({
+    queryKey: ['users-by-perm', 'transition_incident'],
+    queryFn: () => getUsersByPermission('transition_incident'),
+    enabled: incident?.status === 'ASSIGNED' && hasPermission('assign_incident'),
   })
 
   const transitionMut = useMutation({
-    mutationFn: async ({ status, assignTo }: { status: string; assignTo?: string }) => {
-      if (status === 'ASSIGNED' && assignTo) {
-        await updateIncident(incidentId, { assigned_to: Number(assignTo) })
-      }
-      return transitionIncident(incidentId, status)
-    },
+    mutationFn: ({ newStatus, assignedTo }: { newStatus: string; assignedTo?: number }) =>
+      transitionIncident(incidentId, newStatus, '', assignedTo),
     onSuccess: (updated) => {
       setTransitionError('')
-      // Immediately update the cache with the returned data — no refetch lag
+      setSelectedHead('')
+      setSelectedMember('')
       queryClient.setQueryData<Incident>(['incident', incidentId], updated)
-      // Also invalidate the list so the incidents table reflects the change
       queryClient.invalidateQueries({ queryKey: ['incidents'] })
     },
     onError: (err: unknown) => {
+      const errData = (err as { response?: { data?: Record<string, unknown> } })?.response?.data
       const msg =
-        (err as { response?: { data?: { detail?: string } } })?.response?.data?.detail
-        ?? 'Transition failed — check if this status change is allowed'
-      setTransitionError(msg)
+        (errData as { detail?: string })?.detail ??
+        (errData as { assigned_to?: string })?.assigned_to ??
+        'Transition failed — check if this status change is allowed'
+      setTransitionError(String(msg))
     },
   })
 
@@ -117,12 +127,20 @@ export default function IncidentDetail() {
 
   const allowed = VALID_TRANSITIONS[incident.status] ?? []
 
-  function handleTransition(newStatus: string) {
-    transitionMut.mutate({
-      status: newStatus,
-      assignTo: newStatus === 'ASSIGNED' ? assignTo : undefined,
-    })
-  }
+  const canAssign = hasPermission('assign_incident')
+  const canTransition = hasPermission('transition_incident')
+
+  // Actions to show based on current status
+  const showAssignHead = incident.status === 'NEW' && canAssign
+  const showEscalateToMember = incident.status === 'ASSIGNED' && canAssign
+  // Generic status buttons for non-assignment transitions (RESOLVED, CLOSED, rollbacks)
+  const genericTransitions = allowed.filter(
+    (s) => s !== 'ASSIGNED' && s !== 'IN_PROGRESS'
+  )
+  // Allow rollback to NEW from ASSIGNED (no assignee needed)
+  const rollbackToNew = incident.status === 'ASSIGNED' && allowed.includes('NEW') && canTransition
+  // Allow rollback from IN_PROGRESS to ASSIGNED (need assignee)
+  const rollbackToAssigned = incident.status === 'IN_PROGRESS' && allowed.includes('ASSIGNED') && canAssign
 
   return (
     <RequirePermission permission="view_incidents">
@@ -221,36 +239,125 @@ export default function IncidentDetail() {
         </Card>
       )}
 
-      {allowed.length > 0 && (
+      {(allowed.length > 0 && (canAssign || canTransition)) && (
         <Card>
           <CardHeader><CardTitle>Actions</CardTitle></CardHeader>
-          <CardContent className="flex flex-wrap items-center gap-3">
+          <CardContent className="space-y-4">
             {transitionError && (
               <Alert variant="destructive" className="w-full">
                 <AlertCircle />
                 <AlertDescription>{transitionError}</AlertDescription>
               </Alert>
             )}
-            {allowed.includes('ASSIGNED') && (
-              <Select value={assignTo} onValueChange={setAssignTo}>
-                <SelectTrigger className="w-48"><SelectValue placeholder="Assign to..." /></SelectTrigger>
-                <SelectContent>
-                  {users.map((u) => (
-                    <SelectItem key={u.id} value={String(u.id)}>{u.username}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+
+            {/* NEW → ASSIGNED: assign a Head of IT */}
+            {showAssignHead && (
+              <div className="flex flex-wrap items-end gap-3">
+                <div className="grid gap-1.5">
+                  <Label>Assign to Team Head</Label>
+                  <Select value={selectedHead} onValueChange={setSelectedHead}>
+                    <SelectTrigger className="w-52">
+                      <SelectValue placeholder="Select a head..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {heads.map((u) => (
+                        <SelectItem key={u.id} value={String(u.id)}>
+                          {u.username}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <Button
+                  disabled={!selectedHead || transitionMut.isPending}
+                  onClick={() => transitionMut.mutate({ newStatus: 'ASSIGNED', assignedTo: Number(selectedHead) })}
+                >
+                  Assign
+                </Button>
+              </div>
             )}
-            {allowed.map((s) => (
+
+            {/* ASSIGNED → IN_PROGRESS: escalate to Member */}
+            {showEscalateToMember && (
+              <div className="flex flex-wrap items-end gap-3">
+                <div className="grid gap-1.5">
+                  <Label>Escalate to Member</Label>
+                  <Select value={selectedMember} onValueChange={setSelectedMember}>
+                    <SelectTrigger className="w-52">
+                      <SelectValue placeholder="Select a member..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {members.map((u) => (
+                        <SelectItem key={u.id} value={String(u.id)}>
+                          {u.username}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <Button
+                  disabled={!selectedMember || transitionMut.isPending}
+                  onClick={() => transitionMut.mutate({ newStatus: 'IN_PROGRESS', assignedTo: Number(selectedMember) })}
+                >
+                  Escalate
+                </Button>
+              </div>
+            )}
+
+            {/* Rollback ASSIGNED → NEW */}
+            {rollbackToNew && (
               <Button
-                key={s}
-                onClick={() => handleTransition(s)}
+                variant="outline"
                 disabled={transitionMut.isPending}
-                variant={s === 'RESOLVED' || s === 'CLOSED' ? 'default' : 'outline'}
+                onClick={() => transitionMut.mutate({ newStatus: 'NEW' })}
               >
-                {s.replace('_', ' ')}
+                Revert to New
               </Button>
-            ))}
+            )}
+
+            {/* Rollback IN_PROGRESS → ASSIGNED */}
+            {rollbackToAssigned && (
+              <div className="flex flex-wrap items-end gap-3">
+                <div className="grid gap-1.5">
+                  <Label>Re-assign Head</Label>
+                  <Select value={selectedHead} onValueChange={setSelectedHead}>
+                    <SelectTrigger className="w-52">
+                      <SelectValue placeholder="Select a head..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {heads.map((u) => (
+                        <SelectItem key={u.id} value={String(u.id)}>
+                          {u.username}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <Button
+                  variant="outline"
+                  disabled={!selectedHead || transitionMut.isPending}
+                  onClick={() => transitionMut.mutate({ newStatus: 'ASSIGNED', assignedTo: Number(selectedHead) })}
+                >
+                  Re-assign
+                </Button>
+              </div>
+            )}
+
+            {/* Generic transitions: RESOLVED, CLOSED (and IN_PROGRESS → RESOLVED) */}
+            {genericTransitions.length > 0 && canTransition && (
+              <div className="flex flex-wrap gap-2">
+                {genericTransitions.map((s) => (
+                  <Button
+                    key={s}
+                    onClick={() => transitionMut.mutate({ newStatus: s })}
+                    disabled={transitionMut.isPending}
+                    variant={s === 'RESOLVED' || s === 'CLOSED' ? 'default' : 'outline'}
+                  >
+                    {s.replace('_', ' ')}
+                  </Button>
+                ))}
+              </div>
+            )}
           </CardContent>
         </Card>
       )}

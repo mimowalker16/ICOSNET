@@ -24,8 +24,14 @@ class MeView(APIView):
 
 
 class UserListCreateView(generics.ListCreateAPIView):
-    queryset = User.objects.select_related('role').order_by('username')
     permission_classes = [IsAdmin]
+
+    def get_queryset(self):
+        qs = User.objects.select_related('role').order_by('username')
+        permission = self.request.query_params.get('permission')
+        if permission:
+            qs = qs.filter(role__permissions__codename=permission)
+        return qs
 
     def get_serializer_class(self):
         if self.request.method == 'POST':

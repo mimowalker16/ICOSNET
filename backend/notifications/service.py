@@ -18,7 +18,7 @@ class NotificationService:
     def dispatch(cls, incident, event_type):
         subject, body = cls._build_message(incident, event_type)
         admin_emails = list(
-            User.objects.filter(role='ADMIN', is_active=True).values_list('email', flat=True)
+            User.objects.filter(role__is_admin=True, is_active=True).values_list('email', flat=True)
         )
         cls._send_email(incident, subject, body, admin_emails)
 
