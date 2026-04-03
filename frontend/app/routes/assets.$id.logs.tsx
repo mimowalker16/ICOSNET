@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { useParams, Link } from 'react-router'
 import { useQuery } from '@tanstack/react-query'
 import { format } from 'date-fns'
@@ -14,9 +15,12 @@ import {
   TableHeader,
   TableRow,
 } from '~/components/ui/table'
+import { TablePagination } from '~/components/ui/table-pagination'
 import { getAsset, getStatusHistory } from '~/lib/services/assets'
 import type { Asset, StatusLog } from '~/types'
 import { RequirePermission } from '~/components/RequirePermission'
+
+const PAGE_SIZE = 25
 
 function statusVariant(status?: string) {
   switch (status) {
@@ -29,6 +33,7 @@ function statusVariant(status?: string) {
 export default function AssetLogs() {
   const { id } = useParams()
   const assetId = Number(id)
+  const [page, setPage] = useState(1)
 
   const { data: asset } = useQuery<Asset>({
     queryKey: ['asset', assetId],
@@ -39,6 +44,9 @@ export default function AssetLogs() {
     queryKey: ['asset-history', assetId],
     queryFn: () => getStatusHistory(assetId),
   })
+
+  const totalPages = Math.ceil(logs.length / PAGE_SIZE)
+  const paginated = logs.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE)
 
   return (
     <RequirePermission permission="view_asset_logs">
@@ -76,7 +84,7 @@ export default function AssetLogs() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {logs.map((log) => (
+                  {paginated.map((log) => (
                     <TableRow key={log.id}>
                       <TableCell>
                         <Badge variant={statusVariant(log.status)}>{log.status}</Badge>
@@ -95,6 +103,7 @@ export default function AssetLogs() {
                 </TableBody>
               </Table>
             )}
+            <TablePagination page={page} totalPages={totalPages} onPageChange={setPage} />
           </CardContent>
         </Card>
       </div>

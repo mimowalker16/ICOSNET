@@ -107,6 +107,7 @@ class IncidentTransitionView(APIView):
 
 
 class IncidentLogsView(APIView):
+    pagination_class = None
 
     def get_permissions(self):
         if self.request.method in SAFE_METHODS:

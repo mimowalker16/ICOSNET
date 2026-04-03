@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { useParams, Link } from 'react-router'
 import { useQuery } from '@tanstack/react-query'
 import { format } from 'date-fns'
@@ -14,9 +15,12 @@ import {
   TableHeader,
   TableRow,
 } from '~/components/ui/table'
+import { TablePagination } from '~/components/ui/table-pagination'
 import { getIncident, getIncidentLogs } from '~/lib/services/incidents'
 import type { Incident, IncidentLog } from '~/types'
 import { RequirePermission } from '~/components/RequirePermission'
+
+const PAGE_SIZE = 25
 
 const ACTION_LABELS: Record<string, string> = {
   STATUS_CHANGE: 'Status Change',
@@ -37,6 +41,7 @@ function actionVariant(type: string) {
 export default function IncidentLogs() {
   const { id } = useParams()
   const incidentId = Number(id)
+  const [page, setPage] = useState(1)
 
   const { data: incident } = useQuery<Incident>({
     queryKey: ['incident', incidentId],
@@ -47,6 +52,9 @@ export default function IncidentLogs() {
     queryKey: ['incident-logs', incidentId],
     queryFn: () => getIncidentLogs(incidentId),
   })
+
+  const totalPages = Math.ceil(logs.length / PAGE_SIZE)
+  const paginated = logs.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE)
 
   return (
     <RequirePermission permission="view_incident_logs">
@@ -85,7 +93,7 @@ export default function IncidentLogs() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {logs.map((log) => (
+                  {paginated.map((log) => (
                     <TableRow key={log.id}>
                       <TableCell>
                         <Badge variant={actionVariant(log.action_type)}>
@@ -111,6 +119,7 @@ export default function IncidentLogs() {
                 </TableBody>
               </Table>
             )}
+            <TablePagination page={page} totalPages={totalPages} onPageChange={setPage} />
           </CardContent>
         </Card>
       </div>

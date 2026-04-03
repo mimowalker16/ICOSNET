@@ -35,6 +35,7 @@ class AssetDetailView(generics.RetrieveUpdateDestroyAPIView):
 class AssetStatusHistoryView(generics.ListAPIView):
     serializer_class = AssetStatusLogSerializer
     permission_classes = [require_perm('view_asset_logs')]
+    pagination_class = None
     filterset_fields = ['status']
     ordering_fields = ['checked_at']
 
