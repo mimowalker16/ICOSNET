@@ -31,29 +31,10 @@ services:
       - db
       - redis
 
-  celery-worker:
-    build: ./backend
-    restart: unless-stopped
-    command: celery -A config worker -l info
-    volumes:
-      - ./backend:/app
-    env_file:
-      - .env
-    depends_on:
-      - db
-      - redis
-
-  celery-beat:
-    build: ./backend
-    restart: unless-stopped
-    command: celery -A config beat -l info --scheduler django_celery_beat.schedulers:DatabaseScheduler
-    volumes:
-      - ./backend:/app
-    env_file:
-      - .env
-    depends_on:
-      - db
-      - redis
+  # NOTE: celery-worker and celery-beat are intentionally NOT in Docker.
+  # They run natively on the host (via start.bat) so that PING/TCP/HTTP probes
+  # can reach LAN addresses like 192.168.1.1 that are unreachable from inside
+  # a Docker container on Windows/macOS.
 
 volumes:
   postgres_data:
