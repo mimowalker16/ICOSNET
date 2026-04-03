@@ -60,14 +60,14 @@ export default function IncidentDetail() {
   })
 
   // Users eligible to be assigned as Head (need assign_incident)
-  const { data: heads = [] } = useQuery<User[]>({
+  const { data: heads = [], isFetching: headsLoading } = useQuery<User[]>({
     queryKey: ['users-by-perm', 'assign_incident'],
     queryFn: () => getUsersByPermission('assign_incident'),
     enabled: (incident?.status === 'NEW' || incident?.status === 'IN_PROGRESS') && hasPermission('assign_incident'),
   })
 
   // Users eligible to be escalated as Member (need transition_incident)
-  const { data: members = [] } = useQuery<User[]>({
+  const { data: members = [], isFetching: membersLoading } = useQuery<User[]>({
     queryKey: ['users-by-perm', 'transition_incident'],
     queryFn: () => getUsersByPermission('transition_incident'),
     enabled: incident?.status === 'ASSIGNED' && hasPermission('assign_incident'),
@@ -255,12 +255,14 @@ export default function IncidentDetail() {
               <div className="flex flex-wrap items-end gap-3">
                 <div className="grid gap-1.5">
                   <Label>Assign to Team Head</Label>
-                  <Select value={selectedHead} onValueChange={setSelectedHead}>
+                  <Select value={selectedHead} onValueChange={setSelectedHead} disabled={headsLoading}>
                     <SelectTrigger className="w-52">
-                      <SelectValue placeholder="Select a head..." />
+                      <SelectValue placeholder={headsLoading ? 'Loading...' : 'Select a head...'} />
                     </SelectTrigger>
                     <SelectContent>
-                      {heads.map((u) => (
+                      {heads.length === 0 ? (
+                        <SelectItem value="__empty__" disabled>No eligible users found</SelectItem>
+                      ) : heads.map((u) => (
                         <SelectItem key={u.id} value={String(u.id)}>
                           {u.username}
                         </SelectItem>
@@ -282,12 +284,14 @@ export default function IncidentDetail() {
               <div className="flex flex-wrap items-end gap-3">
                 <div className="grid gap-1.5">
                   <Label>Escalate to Member</Label>
-                  <Select value={selectedMember} onValueChange={setSelectedMember}>
+                  <Select value={selectedMember} onValueChange={setSelectedMember} disabled={membersLoading}>
                     <SelectTrigger className="w-52">
-                      <SelectValue placeholder="Select a member..." />
+                      <SelectValue placeholder={membersLoading ? 'Loading...' : 'Select a member...'} />
                     </SelectTrigger>
                     <SelectContent>
-                      {members.map((u) => (
+                      {members.length === 0 ? (
+                        <SelectItem value="__empty__" disabled>No eligible users found</SelectItem>
+                      ) : members.map((u) => (
                         <SelectItem key={u.id} value={String(u.id)}>
                           {u.username}
                         </SelectItem>
@@ -320,12 +324,14 @@ export default function IncidentDetail() {
               <div className="flex flex-wrap items-end gap-3">
                 <div className="grid gap-1.5">
                   <Label>Re-assign Head</Label>
-                  <Select value={selectedHead} onValueChange={setSelectedHead}>
+                  <Select value={selectedHead} onValueChange={setSelectedHead} disabled={headsLoading}>
                     <SelectTrigger className="w-52">
-                      <SelectValue placeholder="Select a head..." />
+                      <SelectValue placeholder={headsLoading ? 'Loading...' : 'Select a head...'} />
                     </SelectTrigger>
                     <SelectContent>
-                      {heads.map((u) => (
+                      {heads.length === 0 ? (
+                        <SelectItem value="__empty__" disabled>No eligible users found</SelectItem>
+                      ) : heads.map((u) => (
                         <SelectItem key={u.id} value={String(u.id)}>
                           {u.username}
                         </SelectItem>

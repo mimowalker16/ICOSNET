@@ -24,7 +24,12 @@ class MeView(APIView):
 
 
 class UserListCreateView(generics.ListCreateAPIView):
-    permission_classes = [IsAdmin]
+
+    def get_permissions(self):
+        # Allow any authenticated user to GET a permission-filtered list (used by incident assignment pickers)
+        if self.request.method == 'GET' and self.request.query_params.get('permission'):
+            return [IsAuthenticated()]
+        return [IsAdmin()]
 
     def get_queryset(self):
         qs = User.objects.select_related('role').order_by('username')
